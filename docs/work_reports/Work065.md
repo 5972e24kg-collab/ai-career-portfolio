@@ -30,6 +30,7 @@ Tag: [[React Three Fiber]], [[Zustand]], [[VRM]], [[Animation]], [[UI/UX]]
 ## 4. 成果物
 
 **動的吹き出し座標制御の実装 (CanvasGemchan.js 抜粋)**
+{% raw %}
 ```javascript
 function CanvasGemchan() {
     // ...フック省略...
@@ -37,7 +38,7 @@ function CanvasGemchan() {
     const balloonPosition = isBustUp ? [-0.35, 1.6, 2.5] : [-0.45, 1.5, 0];
 
     return (
-        <Canvas 45}} [cameraPosition.x, camera="{{position:" cameraPosition.y, cameraPosition.z], fov:>
+        <Canvas 45 [cameraPosition.x, camera="{{" cameraPosition.y, cameraPosition.z], fov: position: }}>
             <CameraManager/>
             <ambientLight intensity={1} color={"#ffddcc"}/> 
             <directionalLight position={[2, 2, -3]} intensity={2}/> 
@@ -45,7 +46,7 @@ function CanvasGemchan() {
 
             {messageText && (
                 <Html center position="{balloonPosition}">
-                    {/* CSSによる吹き出しデザイン (省略) */}
+                    
                     {messageText}
                 </Html>
             )}
@@ -54,3 +55,4 @@ function CanvasGemchan() {
     );
 }
 ```
+{% endraw %}
