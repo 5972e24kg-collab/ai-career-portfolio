@@ -1,4 +1,4 @@
-# Work075: Codexバイブコーディング環境構築とPTAクイズゲームUI改造検証
+# Work075: Codexバイブコーディング環境構築とクイズゲームUI改造検証
 
 Tag: [[Codex]], [[VibeCoding]], [[React]], [[VSCode]], [[Windows11]], [[EnvironmentSetup]], [[Troubleshooting]]
 
