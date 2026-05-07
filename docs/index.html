@@ -22,6 +22,16 @@
       padding: 12px 16px;
       margin: 20px 0;
     }
+    .guide {
+      background: #f6f8fa;
+      border-left: 4px solid #0969da;
+      padding: 12px 16px;
+      margin: 20px 0;
+    }
+    .related {
+      color: #57606a;
+      font-size: 0.95em;
+    }
     a {
       color: #0969da;
     }
@@ -42,10 +52,53 @@
     公開可能な範囲で、実装・検証・運用の証跡を整理しています。
   </div>
 
+  <h2>まず読むなら</h2>
+  <p>
+    初見の方は、目的に応じて以下の順に読むと全体像を把握しやすくなります。
+    本サイトは一次資料を多く含むため、最初から全てを読むのではなく、関心のある技術テーマから辿ることを想定しています。
+  </p>
+
+  <div class="guide">
+    <ul>
+      <li>
+        <strong>全体像</strong><br>
+        <a href="./ai_summary_ja.md">AI向け技術要約Markdown</a> /
+        <a href="./work_index_ja.md">Work001〜Work076 索引</a>
+      </li>
+      <li>
+        <strong>Java MCP Server / Tool Use</strong><br>
+        <a href="https://github.com/5972e24kg-collab/portainer-ops-mcp-java">Java MCP Server</a> /
+        <a href="./work_reports/Work073.md">Work073</a> /
+        <a href="./work_reports/Work074.md">Work074</a>
+      </li>
+      <li>
+        <strong>Codex / AI伴走型開発</strong><br>
+        <a href="./work_reports/Work075.md">Work075</a> /
+        <a href="./work_reports/Work076.md">Work076</a>
+      </li>
+      <li>
+        <strong>RAG / ETL / 記憶制御</strong><br>
+        <a href="./work_reports/Work001.md">Work001</a> /
+        <a href="./work_reports/Work021.md">Work021</a> /
+        <a href="./work_reports/Work022.md">Work022</a> /
+        <a href="./work_reports/Work023.md">Work023</a> /
+        <a href="./work_reports/Work050.md">Work050</a> /
+        <a href="./work_reports/Work051.md">Work051</a>
+      </li>
+      <li>
+        <strong>ローカルLLM / QLoRA</strong><br>
+        <a href="./work_reports/Work010.md">Work010</a> /
+        <a href="./work_reports/Work018.md">Work018</a> /
+        <a href="./work_reports/Work029.md">Work029</a> /
+        <a href="./work_reports/Work071.md">Work071</a> /
+        <a href="./work_reports/Work072.md">Work072</a>
+      </li>
+    </ul>
+  </div>
+
   <h2>主要資料</h2>
   <ul>
     <li><a href="./ai_summary_ja.md">AI向け技術要約Markdown</a></li>
-    <li><a href="./evidence_index_ja.md">Evidence Index</a></li>
     <li><a href="./work_index_ja.md">Work001〜Work076 索引</a></li>
     <li><a href="./public_scope_and_masking_ja.md">公開範囲・マスク方針</a></li>
     <li><a href="./pre_public_review/index.html">AIを用いた公開前レビュー運用</a></li>
@@ -59,23 +112,50 @@
           Java MCP Server
         </a>
       </strong><br>
-      Docker / Portainer 監視情報を LLM 向けDTOとして公開する自作MCP基盤。
+      Docker / Portainer 監視情報を LLM 向けDTOとして公開する自作MCP基盤。<br>
+      <span class="related">
+        関連Work:
+        <a href="./work_reports/Work073.md">Work073</a> /
+        <a href="./work_reports/Work074.md">Work074</a>
+      </span>
     </li>
     <li>
       <strong>ローカルLLMエージェント基盤</strong><br>
-      Director / Actor 構成、記憶制御、RAG連携。
+      Director / Actor 構成、記憶制御、RAG連携。<br>
+      <span class="related">
+        関連Work:
+        <a href="./work_reports/Work050.md">Work050</a> /
+        <a href="./work_reports/Work051.md">Work051</a> /
+        <a href="./work_reports/Work071.md">Work071</a>
+      </span>
     </li>
     <li>
       <strong>RAG / ETL ナレッジパイプライン</strong><br>
-      Markdown、ChromaDB、Embedding、Memory Block。
+      Markdown、ChromaDB、Embedding、Memory Block。<br>
+      <span class="related">
+        関連Work:
+        <a href="./work_reports/Work001.md">Work001</a> /
+        <a href="./work_reports/Work021.md">Work021</a> /
+        <a href="./work_reports/Work022.md">Work022</a> /
+        <a href="./work_reports/Work023.md">Work023</a>
+      </span>
     </li>
     <li>
       <strong>QLoRAモデル適応</strong><br>
-      学習データ生成、GGUF化、Ollama投入、モデル評価。
+      学習データ生成、GGUF化、Ollama投入、モデル評価。<br>
+      <span class="related">
+        関連Work:
+        <a href="./work_reports/Work072.md">Work072</a>
+      </span>
     </li>
     <li>
       <strong>Reactクイズアプリ</strong><br>
-      Codexを用いたAI伴走型開発と実利用者を想定したUI改善。
+      Codexを用いたAI伴走型開発と実利用者を想定したUI改善。<br>
+      <span class="related">
+        関連Work:
+        <a href="./work_reports/Work075.md">Work075</a> /
+        <a href="./work_reports/Work076.md">Work076</a>
+      </span>
     </li>
   </ul>
 

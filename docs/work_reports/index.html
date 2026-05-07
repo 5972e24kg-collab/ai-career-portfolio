@@ -22,6 +22,19 @@
       padding: 12px 16px;
       margin: 20px 0;
     }
+    .guide {
+      background: #f6f8fa;
+      border-left: 4px solid #0969da;
+      padding: 12px 16px;
+      margin: 20px 0;
+    }
+    .work-list li {
+      margin-bottom: 12px;
+    }
+    .purpose {
+      color: #57606a;
+      font-size: 0.95em;
+    }
     a {
       color: #0969da;
     }
@@ -40,38 +53,151 @@
     実IP、認証情報、内部URL、個人情報、公開に適さない運用情報を除外またはマスクしたものから順次掲載します。
   </div>
 
+  <h2>目的別に読む</h2>
+  <p>
+    公開済みレポートは一次資料として時系列に近い形で掲載しています。
+    初見の方は、関心のある技術テーマから読むと把握しやすくなります。
+  </p>
+
+  <div class="guide">
+    <ul>
+      <li>
+        <strong>全体像</strong><br>
+        <a href="../ai_summary_ja.md">AI向け技術要約Markdown</a> /
+        <a href="../work_index_ja.md">Work001〜Work076 索引</a>
+      </li>
+      <li>
+        <strong>Java MCP Server / Tool Use</strong><br>
+        <a href="./Work073.md">Work073</a> /
+        <a href="./Work074.md">Work074</a> /
+        <a href="https://github.com/5972e24kg-collab/portainer-ops-mcp-java">Java MCP Server</a>
+      </li>
+      <li>
+        <strong>Codex / AI伴走型開発</strong><br>
+        <a href="./Work075.md">Work075</a> /
+        <a href="./Work076.md">Work076</a>
+      </li>
+      <li>
+        <strong>RAG / ETL / 記憶制御</strong><br>
+        <a href="./Work001.md">Work001</a> /
+        <a href="./Work021.md">Work021</a> /
+        <a href="./Work022.md">Work022</a> /
+        <a href="./Work023.md">Work023</a> /
+        <a href="./Work050.md">Work050</a> /
+        <a href="./Work051.md">Work051</a>
+      </li>
+      <li>
+        <strong>ローカルLLM / QLoRA</strong><br>
+        <a href="./Work010.md">Work010</a> /
+        <a href="./Work018.md">Work018</a> /
+        <a href="./Work029.md">Work029</a> /
+        <a href="./Work071.md">Work071</a> /
+        <a href="./Work072.md">Work072</a>
+      </li>
+    </ul>
+  </div>
+
   <h2>公開済み</h2>
-  <ul>
-    <li><a href="./Work001.md">Work001: LLMベンチマークと自宅PukiWiki資産のRAG取り込み</a></li>
-    
-    <li><a href="./Work010.md">Work010: EVO-X2ベンチマーク検証MEM編</a></li>
+  <ul class="work-list">
+    <li>
+      <a href="./Work001.md">Work001: LLMベンチマークと自宅PukiWiki資産のRAG取り込み</a><br>
+      <span class="purpose">読む目的: RAG / 初期検証 / PukiWiki資産取り込み</span>
+    </li>
 
-    <li><a href="./Work018.md">Work018: ホストOSのUbuntu移行</a></li>
+    <li>
+      <a href="./Work010.md">Work010: EVO-X2ベンチマーク検証MEM編</a><br>
+      <span class="purpose">読む目的: ローカルLLM基盤 / ベンチマーク / メモリ検証</span>
+    </li>
 
-    <li><a href="./Work021.md">Work021: 次世代RAGデータパイプライン要件定義</a></li>
-    <li><a href="./Work022.md">Work022: Parent Memory Block Service構築</a></li>
-    <li><a href="./Work023.md">Work023: Parent Memory Block Service実装完了</a></li>
+    <li>
+      <a href="./Work018.md">Work018: ホストOSのUbuntu移行</a><br>
+      <span class="purpose">読む目的: ローカルLLM基盤 / Ubuntu移行 / 運用基盤</span>
+    </li>
 
-    <li><a href="./Work029.md">Work029: Node Bへの完全集約とeGPUハイブリッド構成確立</a></li>
+    <li>
+      <a href="./Work021.md">Work021: 次世代RAGデータパイプライン要件定義</a><br>
+      <span class="purpose">読む目的: RAG / ETL / 要件定義</span>
+    </li>
 
-    <li><a href="./Work039.md">Work039: Hugging Faceトレンド自動収集・要約システム構築</a></li>
+    <li>
+      <a href="./Work022.md">Work022: Parent Memory Block Service構築</a><br>
+      <span class="purpose">読む目的: RAG / Memory Block / 設計</span>
+    </li>
 
-    <li><a href="./Work050.md">Work050: 長期記憶化と電源保護の設計</a></li>
-    <li><a href="./Work051.md">Work051: Dual-Phase ThinkingとContext Isolation</a></li>
+    <li>
+      <a href="./Work023.md">Work023: Parent Memory Block Service実装完了</a><br>
+      <span class="purpose">読む目的: RAG / Memory Block / 実装</span>
+    </li>
 
-    <li><a href="./Work054.md">Work054: Node C身体性アーキテクチャとTTS調査 </a></li>
-    <li><a href="./Work055.md">Work055: StyleBertVITS2音声合成基盤構築と永続化 </a></li>
+    <li>
+      <a href="./Work029.md">Work029: Node Bへの完全集約とeGPUハイブリッド構成確立</a><br>
+      <span class="purpose">読む目的: ローカルLLM基盤 / Node集約 / eGPU</span>
+    </li>
 
-    <li><a href="./Work062.md">Work062: EVO-X2アイドル時のCPUファン暴走とROCmスピンロック解消</a></li>
+    <li>
+      <a href="./Work039.md">Work039: Hugging Faceトレンド自動収集・要約システム構築</a><br>
+      <span class="purpose">読む目的: 情報収集自動化 / Hugging Face / 要約</span>
+    </li>
 
-    <li><a href="./Work065.md">Work065: アバターフロントエンド基盤の完成</a></li>
+    <li>
+      <a href="./Work050.md">Work050: 長期記憶化と電源保護の設計</a><br>
+      <span class="purpose">読む目的: 記憶制御 / 電源保護 / 運用設計</span>
+    </li>
 
-    <li><a href="./Work071.md">Work071: Director / Actor分離型チャットボットv2設計と記憶レイヤ再設</a></li>
-    <li><a href="./Work072.md">Work072: Gemma 4 26B A4B のQLoRA成立とGGUF/Ollama本番化</a></li>
-    <li><a href="./Work073.md">Work073: Portainer MCP構築・Open WebUI連携・Java自作MCP基盤</a></li>
-    <li><a href="./Work074.md">Work074: Portainer Ops MCP Java Server構築とDocker監視DTO設計</a></li>
-    <li><a href="./Work075.md">Work075: Codexバイブコーディング環境構築とクイズゲームUI改造検証</a></li>
-    <li><a href="./Work076.md">Work076: Codexバイブコーディング量産工場に向けたGitブランチ運用の習得</a></li>
+    <li>
+      <a href="./Work051.md">Work051: Dual-Phase ThinkingとContext Isolation</a><br>
+      <span class="purpose">読む目的: コンテキスト制御 / Dual-Phase Thinking / Context Isolation</span>
+    </li>
+
+    <li>
+      <a href="./Work054.md">Work054: Node C身体性アーキテクチャとTTS調査</a><br>
+      <span class="purpose">読む目的: 身体性UX / Node C / TTS調査</span>
+    </li>
+
+    <li>
+      <a href="./Work055.md">Work055: StyleBertVITS2音声合成基盤構築と永続化</a><br>
+      <span class="purpose">読む目的: 音声合成 / StyleBertVITS2 / 永続化</span>
+    </li>
+
+    <li>
+      <a href="./Work062.md">Work062: EVO-X2アイドル時のCPUファン暴走とROCmスピンロック解消</a><br>
+      <span class="purpose">読む目的: 運用改善 / ROCm / 障害対応</span>
+    </li>
+
+    <li>
+      <a href="./Work065.md">Work065: アバターフロントエンド基盤の完成</a><br>
+      <span class="purpose">読む目的: アバターUI / React系フロントエンド / 身体性</span>
+    </li>
+
+    <li>
+      <a href="./Work071.md">Work071: Director / Actor分離型チャットボットv2設計と記憶レイヤ再設</a><br>
+      <span class="purpose">読む目的: Director / Actor / チャットボットv2 / 記憶レイヤ</span>
+    </li>
+
+    <li>
+      <a href="./Work072.md">Work072: Gemma 4 26B A4B のQLoRA成立とGGUF/Ollama本番化</a><br>
+      <span class="purpose">読む目的: QLoRA / ローカルLLM / GGUF・Ollama</span>
+    </li>
+
+    <li>
+      <a href="./Work073.md">Work073: Portainer MCP構築・Open WebUI連携・Java自作MCP基盤</a><br>
+      <span class="purpose">読む目的: MCP / Tool Use / Java自作MCP基盤</span>
+    </li>
+
+    <li>
+      <a href="./Work074.md">Work074: Portainer Ops MCP Java Server構築とDocker監視DTO設計</a><br>
+      <span class="purpose">読む目的: MCP / DTO設計 / Docker監視</span>
+    </li>
+
+    <li>
+      <a href="./Work075.md">Work075: Codexバイブコーディング環境構築とクイズゲームUI改造検証</a><br>
+      <span class="purpose">読む目的: Codex / AI伴走型開発 / UI改造検証</span>
+    </li>
+
+    <li>
+      <a href="./Work076.md">Work076: Codexバイブコーディング量産工場に向けたGitブランチ運用の習得</a><br>
+      <span class="purpose">読む目的: Codex / Git運用 / AI生成物管理</span>
+    </li>
   </ul>
 
   <h2>今後の追加予定</h2>

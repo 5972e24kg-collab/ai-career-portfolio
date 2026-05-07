@@ -5,7 +5,7 @@ This repository is a public portfolio hub for AI / LLM engineering work.
 Main purpose:
 
 - present AI / LLM engineering research outputs
-- connect resume, technical portfolio, and evidence
+- connect technical portfolio, research notes, and public evidence
 - provide links to representative projects and demos
 - distinguish professional experience from personal research
 
