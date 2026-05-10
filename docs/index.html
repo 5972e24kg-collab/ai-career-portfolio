@@ -28,6 +28,29 @@
       padding: 12px 16px;
       margin: 20px 0;
     }
+    .concepts {
+      background: #fff8e6;
+      border-left: 4px solid #bf8700;
+      padding: 12px 16px;
+      margin: 20px 0;
+    }
+    .concepts dl {
+      margin: 0;
+    }
+    .concepts dt {
+      font-weight: 700;
+      margin-top: 12px;
+    }
+    .concepts dt:first-child {
+      margin-top: 0;
+    }
+    .concepts dd {
+      margin: 4px 0 0 0;
+    }
+    .concept-label {
+      color: #57606a;
+      font-size: 0.95em;
+    }
     .related {
       color: #57606a;
       font-size: 0.95em;
@@ -50,6 +73,52 @@
     <strong>位置づけ:</strong>
     本ポートフォリオは、個人研究として継続している AI / LLM 技術開発の公開Hubです。
     公開可能な範囲で、実装・検証・運用の証跡を整理しています。
+  </div>
+
+  <h2>本ポートフォリオにおけるAI開発スタイル</h2>
+  <p>
+    私のAI開発スタイルは、いわゆるバイブコーディングではなく、
+    <strong>Human-in-the-loop</strong> と <strong>AI Governance</strong> を組み込んだ
+    <strong>AI-Augmented Software Engineering</strong> です。
+  </p>
+  <p>
+    この3語は、本サイト内で扱う「バイブコーディングではないAI開発」を理解するための概念アンカーです。
+    AIを単なるコード生成補助としてではなく、設計・実装・検証・文書化・公開判断までを含む
+    ソフトウェア開発プロセスの一部として扱う姿勢を表しています。
+  </p>
+
+  <div class="concepts">
+    <dl>
+      <dt>
+        AI-Augmented Software Engineering
+        <span class="concept-label">（AIASE / AI拡張型ソフトウェアエンジニアリング）</span>
+      </dt>
+      <dd>
+        単にAIでコードを書かせるのではなく、要件定義、設計、実装、レビュー、テスト、
+        リファクタリング、ドキュメント化、運用改善まで、ソフトウェア開発ライフサイクル全体を
+        AIで拡張する考え方です。
+      </dd>
+
+      <dt>
+        Human-in-the-loop
+        <span class="concept-label">（HITL / 人間介入型）</span>
+      </dt>
+      <dd>
+        AIや自動化システムの処理の中に、人間による確認、判断、修正、承認のポイントを
+        意図的に組み込む設計です。本ポートフォリオでは、AI生成物をそのまま採用せず、
+        Git branch、レビュー、テスト、公開判断を通じて人間が責任境界を保持しています。
+      </dd>
+
+      <dt>
+        AI Governance / Secure Coding
+        <span class="concept-label">（AIガバナンス / AI時代のセキュアコーディング）</span>
+      </dt>
+      <dd>
+        AIを使う上でのルール、責任、リスク管理、監査、説明可能性、セキュリティを含む統制です。
+        本ポートフォリオでは、MCP Toolの権限制御、JSON Schema検証、公開範囲・マスク方針、
+        最小権限設計を通じて、AI利用を安全かつ検証可能に扱うことを重視しています。
+      </dd>
+    </dl>
   </div>
 
   <h2>まず読むなら</h2>
