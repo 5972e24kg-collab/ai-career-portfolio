@@ -1,0 +1,826 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>Work079: バイブコーディングではないAI開発 - AI / LLM 技術ポートフォリオ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    :root {
+      --text: #222;
+      --muted: #57606a;
+      --border: #d0d7de;
+      --bg-soft: #f6f8fa;
+      --bg-blue: #ddf4ff;
+      --blue: #0969da;
+      --green: #1a7f37;
+      --orange: #bc4c00;
+      --red: #cf222e;
+      --purple: #8250df;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.8;
+      max-width: 1080px;
+      margin: 40px auto;
+      padding: 0 20px 60px;
+      color: var(--text);
+      background: #fff;
+    }
+
+    h1, h2, h3 {
+      line-height: 1.35;
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.3em;
+    }
+
+    h2 {
+      margin-top: 2.2em;
+      padding-bottom: 0.25em;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h3 {
+      margin-top: 1.6em;
+    }
+
+    a {
+      color: var(--blue);
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      background: rgba(175, 184, 193, 0.2);
+      padding: 0.15em 0.35em;
+      border-radius: 6px;
+      font-size: 0.95em;
+    }
+
+    pre {
+      background: #f6f8fa;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      line-height: 1.55;
+    }
+
+    pre code {
+      background: transparent;
+      padding: 0;
+      border-radius: 0;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 1.1rem;
+      margin-top: 0;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin: 20px 0 28px;
+    }
+
+    .lead {
+      background: var(--bg-soft);
+      border-left: 5px solid var(--blue);
+      padding: 18px 20px;
+      margin: 24px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .note {
+      background: var(--bg-soft);
+      border-left: 4px solid var(--muted);
+      padding: 12px 16px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .warning {
+      background: #fff8c5;
+      border-left: 4px solid #9a6700;
+      padding: 12px 16px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .highlight {
+      background: var(--bg-blue);
+      border-left: 4px solid var(--blue);
+      padding: 14px 16px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .toc {
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 28px 0;
+    }
+
+    .toc ol {
+      margin: 0;
+      padding-left: 1.4em;
+    }
+
+    .toc li {
+      margin: 4px 0;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin: 20px 0;
+    }
+
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      background: #fff;
+    }
+
+    .card h3 {
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+
+    .card p {
+      margin-bottom: 0;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-right: 6px;
+      background: var(--bg-soft);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .badge-go {
+      color: var(--green);
+      border-color: rgba(26, 127, 55, 0.35);
+      background: rgba(46, 160, 67, 0.10);
+    }
+
+    .badge-nogo {
+      color: var(--red);
+      border-color: rgba(207, 34, 46, 0.35);
+      background: rgba(248, 81, 73, 0.10);
+    }
+
+    .badge-phase {
+      color: var(--purple);
+      border-color: rgba(130, 80, 223, 0.35);
+      background: rgba(130, 80, 223, 0.10);
+    }
+
+    .comparison {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin: 20px 0;
+    }
+
+    .comparison .box {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      background: #fff;
+    }
+
+    .comparison .box h3 {
+      margin-top: 0;
+    }
+
+    .phase-list {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .phase-list > li {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 14px;
+      background: #fff;
+    }
+
+    .phase-list h3 {
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+
+    .links {
+      margin: 10px 0 0;
+      padding-left: 1.2em;
+    }
+
+    .links li {
+      margin: 4px 0;
+    }
+
+    .footer-nav {
+      margin-top: 48px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 0.95em;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Work079: バイブコーディングではないAI開発</h1>
+  <p class="subtitle">SwitchBot制御用MCPサーバー2号機と、AI伴走型・監督責任開発の実践</p>
+
+  <p class="meta">
+    Tag:
+    <span class="badge">MCP</span>
+    <span class="badge">SwitchBot</span>
+    <span class="badge">Java</span>
+    <span class="badge">Codex</span>
+    <span class="badge">AI伴走型開発</span>
+    <span class="badge">Tool Use</span>
+    <span class="badge">Safety Design</span>
+  </p>
+
+  <div class="lead">
+    <strong>このページの主題:</strong><br>
+    本ページは「AIにコードを書かせたらMCPサーバーが完成した」という単純な成功談ではありません。
+    AIを設計・分析・実装・レビューのプロセスへ組み込み、人間がGo / NoGo判断と最終責任を持つ開発スタイルを検証した記録です。
+  </div>
+
+  <div class="toc">
+    <strong>目次</strong>
+    <ol>
+      <li><a href="#intro">はじめに：これは「AIにコードを書かせた話」ではない</a></li>
+      <li><a href="#artifact">今回作ったもの</a></li>
+      <li><a href="#why-codex">なぜ、自分で書かずにCodexを使ったのか</a></li>
+      <li><a href="#two-types">AIコーディングには2種類ある</a></li>
+      <li><a href="#team">今回の開発体制：複数AIを役割分担させる</a></li>
+      <li><a href="#flow">実際の開発フロー</a></li>
+      <li><a href="#go-nogo">Go / NoGo判断が品質を作る</a></li>
+      <li><a href="#safety">安全設計：LLMに物理世界を触らせるための境界線</a></li>
+      <li><a href="#prompts">プロンプトは設計書であり、判断ログである</a></li>
+      <li><a href="#load">この開発方法は楽ではない</a></li>
+      <li><a href="#code-review">AIのコードは美しい。しかし、人間には高カロリーである</a></li>
+      <li><a href="#conclusion">Work079で得た結論</a></li>
+      <li><a href="#materials">公開資料</a></li>
+    </ol>
+  </div>
+
+  <h2 id="intro">1. はじめに：これは「AIにコードを書かせた話」ではない</h2>
+
+  <p>
+    このページは、SwitchBot制御用MCPサーバー2号機を、ChatGPT、Claude、CodexなどのクラウドAIを併用して構築した記録である。
+  </p>
+
+  <p>
+    ただし、本ページの主題は「AIにコードを書かせたらMCPサーバーが完成した」という単純な成功談ではない。
+  </p>
+
+  <p>
+    今回の開発では、私はあえて自分でコードを書かなかった。
+  </p>
+
+  <p>
+    MCPサーバーの基盤も、SwitchBot API呼び出しクラスも、既に自作済みだった。
+    単に完成させるだけであれば、自力で実装した方が短時間で済んだ可能性が高い。
+  </p>
+
+  <p>
+    それでもCodexを使った理由は、開発速度を上げるためではない。
+  </p>
+
+  <p>
+    目的は、AIを使って低コストにコードを量産することではなく、AIを設計・分析・実装・レビューのプロセスへ組み込み、
+    人間がGo / NoGo判断と最終責任を持つ開発スタイルを検証することだった。
+  </p>
+
+  <div class="highlight">
+    今回得られた最大の成果は、ソースコードそのものではなく、
+    AIを使って初期投資コストを上げ、中長期的な保守性・安全性・判断可能性を得るという開発プロセスの実体験である。
+  </div>
+
+  <h2 id="artifact">2. 今回作ったもの</h2>
+
+  <p>
+    今回作成したのは、SwitchBotのシーン操作をMCP Toolとして公開する小型MCPサーバーである。
+  </p>
+
+  <div class="grid">
+    <div class="card">
+      <h3><code>scenes</code></h3>
+      <p>
+        MCPサーバーから利用可能なSwitchBotシーン一覧を返すTool。
+        SwitchBotアプリに存在する全シーンではなく、MCP公開許可済みのシーンだけを返す。
+      </p>
+    </div>
+
+    <div class="card">
+      <h3><code>executeScene</code></h3>
+      <p>
+        <code>scenes</code>で返された<code>sceneKey</code>を指定して、対応するSwitchBotシーンを実行するTool。
+        <code>sceneId</code>はLLMに直接扱わせない。
+      </p>
+    </div>
+  </div>
+
+  <p>
+    重要なのは、LLMにSwitchBotのデバイスを直接操作させない点である。
+  </p>
+
+  <p>
+    家電や照明といった物理世界の操作をLLMに任せる場合、操作対象や責任境界を曖昧にしてはいけない。
+    そのため、今回のMCPサーバーでは、SwitchBotアプリ側で人間が定義した「シーン」のみを実行対象とした。
+  </p>
+
+  <p>
+    さらに、SwitchBot APIが返す<code>sceneId</code>をLLMへ直接渡すのではなく、
+    人間が管理する<code>sceneCatalog.json</code>に定義された<code>sceneKey</code>を通して操作する設計にした。
+  </p>
+
+  <h2 id="why-codex">3. なぜ、自分で書かずにCodexを使ったのか</h2>
+
+  <p>
+    今回の開発は、自分で実装できないからAIに頼ったものではない。むしろ逆である。
+  </p>
+
+  <p>
+    MCPサーバーの共通基盤は、既にPortainer向けMCPサーバー1号機で構築済みだった。
+    SwitchBot APIを呼び出すJavaクラスも、日常的にStream Deckから家電操作を行うために実運用していた。
+  </p>
+
+  <p>
+    つまり、今回のSwitchBot MCPサーバーは、既存資産を接続すれば完成する見込みがあった。
+    自力で作るだけなら、おそらく短時間で終わった。
+  </p>
+
+  <p>
+    しかし、それでは今回の目的にはならない。
+  </p>
+
+  <p>
+    今回検証したかったのは、AIがコードを書けるかどうかではない。
+    AIを実務的な開発プロセスに組み込んだとき、人間はどこで判断し、どこで止め、どこで採用し、どこで責任を持つべきかである。
+  </p>
+
+  <h2 id="two-types">4. AIコーディングには2種類ある</h2>
+
+  <p>
+    今回の作業を通して、私はAIを使ったコーディングには少なくとも2種類あると感じた。
+  </p>
+
+  <div class="comparison">
+    <div class="box">
+      <h3>バイブコーディング</h3>
+      <p>
+        AIを使って低コストでソースコードを出力する開発。
+        UIの試作、デザイン案の量産、短期間で複数パターンを比較したい場面では非常に強い。
+      </p>
+    </div>
+
+    <div class="box">
+      <h3>監督責任型AI開発</h3>
+      <p>
+        AIを使って設計・分析・実装・レビューの密度を上げる開発。
+        人間がGo / NoGo判断と最終責任を持ち、中長期的な保守性・安全性・判断可能性を得る。
+      </p>
+    </div>
+  </div>
+
+  <p>
+    Work079は後者の実践だった。
+  </p>
+
+  <h2 id="team">5. 今回の開発体制：複数AIを役割分担させる</h2>
+
+  <p>
+    今回の開発では、複数のAIを同時に使った。
+  </p>
+
+  <div class="grid">
+    <div class="card">
+      <h3>ChatGPT 5.5</h3>
+      <p>
+        仕様相談、方針策定、分析プロンプトの作成、Codexの回答評価、Go / NoGo判断の整理を担当。
+        開発総合本部として扱った。
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>Claude Code Opus 4.7</h3>
+      <p>
+        細かい用語の確認、考えの壁打ち、仮作成したプロンプトの評価、別視点でのレビューを担当。
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>Codex / ChatGPT 5.5</h3>
+      <p>
+        IntelliJ IDEA上で実際にコードを生成する役割。
+        分析フェーズと製造フェーズを分けて依頼した。
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>Gemini 3.1 Pro</h3>
+      <p>
+        必要に応じて別系統の確認や補助的な調査に使用した。
+      </p>
+    </div>
+  </div>
+
+  <p>
+    ここで重要なのは、単に複数のAIを並列に使ったことではない。
+    それぞれのAIに役割を持たせ、文脈の汚染を防ぎながら、必要な情報だけを主軸の開発チャットに戻したことである。
+  </p>
+
+  <h2 id="flow">6. 実際の開発フロー</h2>
+
+  <p>
+    今回の開発フローは、おおむね次のような流れだった。
+  </p>
+
+  <pre><code>1. ChatGPTと仕様・方針を相談する
+2. Claudeで用語確認や考えの壁打ちを行う
+3. ChatGPTで分析用プロンプトを作成する
+4. Codexで分析タスクを実行し、分析レポートを取得する
+5. 私が分析レポートを読み、判断すべき点にコメントする
+6. 必要に応じてClaudeへ相談する
+7. ChatGPTへ分析結果と私の判断を戻し、Go / NoGoを決める
+8. Goの場合、ChatGPTで製造用プロンプトを作成する
+9. Codexで製造を実行する
+10. Claudeにソースコードをレビューさせる
+11. 私自身もソースコードを全文読む
+12. 自分のPCで動作確認する
+13. 結果をChatGPTへ戻し、次の方針を立てる</code></pre>
+
+  <p>
+    特に意識していたのは、ChatGPTとClaudeの使い分けである。
+  </p>
+
+  <p>
+    私にとって、技術開発を前に進める主軸はChatGPTである。
+    そのため、ChatGPTのチャットには、後から開発経緯を振り返るために必要な情報だけを残すようにしている。
+  </p>
+
+  <p>
+    このチャットは長くなることが最初から分かっていた。
+    さらに、プロジェクト間でメモリや文脈が共有される場合もある。
+    だからこそ、主軸のチャットには、できるだけ純度の高い情報だけを残したかった。
+  </p>
+
+  <p>
+    開発中には、思わずガッツポーズしたくなる場面もある。
+    しかし、私はChatGPTに「やったね！」のような感情的な反応をあまり書かない。
+    それは、技術開発の文脈上、後から必要になる情報ではないからである。
+  </p>
+
+  <p>
+    同じ理由で、「gitのコマンドを忘れた」「dry-runとは何か」といった、その場限りの疑問も、基本的にはChatGPTに投げないようにした。
+    それらは開発中の私にとっては必要な疑問である。
+    しかし、Work079という技術開発の主軸から見ると、必ずしも中心的な情報ではない。
+  </p>
+
+  <div class="note">
+    今回、<code>dry-run</code>という言葉が出てきたとき、私は実は初めてその用語を意識した。
+    その場で「ChatGPTがdry-runと言っているけど、これは何か」とClaudeに相談した。
+    これはChatGPTを信頼していないからではなく、ChatGPTを主軸として大切に扱っているからである。
+  </div>
+
+  <p>
+    ChatGPTのチャットは、開発の本流を記録する場所である。
+    そこに、すべての小さな疑問や感情や寄り道を流し込むと、文脈が濁る。
+    長い開発では、この濁りが後半の判断精度に影響する可能性がある。
+  </p>
+
+  <p>
+    一方で、Claudeで確認した内容であっても、後の技術レポートや設計判断に必要だと判断したものは、あえてChatGPTへ戻す。
+    なぜなら、主軸であるChatGPTのチャットに残っていなければ、最終的な技術レポートの材料として扱いにくくなるからである。
+  </p>
+
+  <pre><code>ChatGPT:
+  開発の主軸
+  仕様・判断・経緯・成果を残す場所
+
+Claude:
+  横道の確認
+  用語調査
+  思考整理
+  別視点レビュー
+
+Codex:
+  実装担当
+
+Gemini:
+  補助的な確認・別視点</code></pre>
+
+  <p>
+    複数AIの使い分けは、単なる便利技ではない。
+    それは、文脈の純度を管理し、判断ログを整理し、AIを開発プロセスの中で安全に使うための運用設計である。
+  </p>
+
+  <h2 id="go-nogo">7. Go / NoGo判断が品質を作る</h2>
+
+  <p>
+    今回の開発で最も重要だったのは、Codexに製造させることではなく、製造に進む前に止める判断だった。
+  </p>
+
+  <div class="grid">
+    <div class="card">
+      <h3><span class="badge badge-nogo">NoGo</span> SwitchBotApisV2 初回分析</h3>
+      <p>
+        Codexの分析自体は優秀だったが、背景情報が広すぎた。
+        低レイヤーAPIクライアントにMCP固有の責務が混入する危険があったため、スコープを切り直した。
+      </p>
+    </div>
+
+    <div class="card">
+      <h3><span class="badge badge-nogo">NoGo</span> SceneService 初回分析</h3>
+      <p>
+        cooldownとdry-runが抜けていた。
+        McpServletではなくSceneServiceへ実行制御を寄せる判断により、責務分離を維持した。
+      </p>
+    </div>
+  </div>
+
+  <p>
+    AIの分析結果は優秀である。
+    しかし、優秀な分析結果をそのまま採用することと、良い開発をすることは同じではない。
+  </p>
+
+  <p>
+    AIが出したものを読み、人間が止める。
+    スコープを切り直す。
+    必要なら前工程に戻す。
+  </p>
+
+  <div class="highlight">
+    このGo / NoGo判断こそが、今回の品質を作った。
+  </div>
+
+  <h2 id="safety">8. 安全設計：LLMに物理世界を触らせるための境界線</h2>
+
+  <p>
+    SwitchBot MCPサーバーは、LLMから物理世界へ操作を届ける仕組みである。
+    そのため、安全設計は最初から重要だった。
+  </p>
+
+  <p>
+    今回の基本方針は、デバイス直接操作を禁止し、SwitchBotのシーン実行に限定することだった。
+  </p>
+
+  <pre><code>SwitchBot APIのgetScenesに存在する
+かつ
+sceneCatalog.jsonにも存在する
+かつ
+sceneIdが一致する
+かつ
+sceneCatalog.json側のexecutableがtrue</code></pre>
+
+  <p>
+    このinner join方式により、SwitchBot側に存在するだけのシーンはLLMへ公開されない。
+    人間が<code>sceneCatalog.json</code>に登録し、公開してよいと判断したものだけが<code>SceneSummary</code>としてMCPへ出る。
+  </p>
+
+  <p>
+    また、管理用の<code>note</code>はLLMに渡さない。
+    実行時も、LLMは<code>sceneId</code>ではなく<code>sceneKey</code>を指定する。
+  </p>
+
+  <p>
+    これに加えて、同じsceneKeyの連続実行を抑止するcooldownを入れた。
+    さらに、実際にはSwitchBot APIを呼ばずに解決処理だけを確認できるdry-runモードも用意した。
+  </p>
+
+  <h2 id="prompts">9. プロンプトは設計書であり、判断ログである</h2>
+
+  <p>
+    今回公開するプロンプト群は、単なるAIへの命令文ではない。
+  </p>
+
+  <p>
+    それらは、分析対象、スコープ、禁止事項、責務境界、Go / NoGo条件を明文化した設計書である。
+  </p>
+
+  <p>
+    分析フェーズのプロンプトでは、必ず「コード変更・ファイル作成・実装は行わない」と明記した。
+    これは、いきなりAIに実装させないためである。
+  </p>
+
+  <p>
+    製造フェーズでは、前工程で合意した仕様、作成してよいファイル、変更してよい範囲、変更してはいけない範囲を明示した。
+  </p>
+
+  <pre><code>分析する
+判断する
+製造する
+確認する
+次へ進む</code></pre>
+
+  <p>
+    完成したソースコードだけを見ても、なぜその設計になったのかは分からない。
+    しかし、プロンプトと分析レポートとGo / NoGo判断を合わせて見ると、開発の判断過程が見える。
+  </p>
+
+  <h2 id="load">10. この開発方法は楽ではない</h2>
+
+  <p>
+    今回の方法は、楽ではない。
+    AIを使えば開発が楽になる、という単純な話ではなかった。
+  </p>
+
+  <p>
+    私はChatGPT、Claude、Codexの返答をほぼすべて読んだ。
+    しかも、多くの場合は2回読んだ。
+  </p>
+
+  <p>
+    1回目は全体を把握するため。
+    2回目は、自分が判断すべき点を拾い、回答するためである。
+  </p>
+
+  <p>
+    AIが出した分析やコードを読まずに採用するなら、それは監督責任型の開発ではない。
+    人間が判断責任を持つなら、読むしかない。理解するしかない。疑うしかない。
+  </p>
+
+  <div class="highlight">
+    この方法は、実装時間を減らすかわりに、認知負荷を増やす。
+    ただし、その認知負荷は、設計品質、判断可能性、保守性、そして後から説明できる開発ログへ変換される。
+  </div>
+
+  <h2 id="code-review">11. AIのコードは美しい。しかし、人間には高カロリーである</h2>
+
+  <p>
+    Codexが出力するソースコードは美しい。
+    構造は整理されており、責務も分かれており、Javaとしても洗練されている。
+  </p>
+
+  <p>
+    しかし同時に、人間が保守するには高カロリーだとも感じた。
+  </p>
+
+  <p>
+    AIが書くコードは、密度が高い。無駄が少ない。余白が少ない。
+    それは品質としては良いことでもある。
+    しかし、人間が読むときには、少し息継ぎが欲しくなる。
+  </p>
+
+  <p>
+    私のコードは、もっと冗長である。
+    同じことを少し丁寧に書く。
+    処理のまとまりごとに、理解の区切りを置く。
+  </p>
+
+  <p>
+    それは、機械的な美しさでは劣るかもしれない。
+    しかし、人間にとっては「ここまでは理解できた。次へ進もう」というしおりになる。
+  </p>
+
+  <p>
+    AIが書いたコードを採用するということは、そのコードを将来の自分が保守するということである。
+    この事実を忘れてはいけない。
+  </p>
+
+  <h2 id="conclusion">12. Work079で得た結論</h2>
+
+  <p>
+    Work079で得た結論は、AIコーディングには複数の形があるということだ。
+  </p>
+
+  <p>
+    AIを使って低コストでコードを量産する開発は、確かに有効である。
+    UI試作やデザイン案の比較、短期間で複数パターンを作る場面では、大きな力を発揮する。
+  </p>
+
+  <p>
+    しかし、実務的な品質、安全性、保守性、責任境界が必要な開発では、それだけでは足りない。
+  </p>
+
+  <p>
+    今回行ったのは、AIを使って初期投資コストを上げる開発だった。
+  </p>
+
+  <div class="highlight">
+    私は今回、AIを使って初期投資コストを上げた。
+    そのかわりに、中長期的な保守性、安全性、判断可能性、そして開発プロセスそのものの再現性を得た。
+  </div>
+
+  <p>
+    これは、バイブコーディングではない。
+    AIを開発プロセスに組み込み、人間が監督責任を持つ開発である。
+  </p>
+
+  <h2 id="materials">13. 公開資料</h2>
+
+  <p>
+    Work079では、技術レポート、開発経過、プロンプト、Codex分析結果、ソースコードを一次資料として公開する。
+  </p>
+
+  <div class="warning">
+    <strong>公開時の注意:</strong>
+    認証情報、実際のsceneId、自宅環境を過度に特定できる情報、ローカルパス、生活パターンが推測できる実行ログなどは、
+    公開範囲・マスク方針に従って加工する。
+  </div>
+
+  <h3>主要資料</h3>
+  <ul>
+    <li><a href="../work_reports/Work079.md">Work079 技術レポート</a></li>
+    <li><a href="https://github.com/5972e24kg-collab/switchbot-ctrl-mcp-java">GitHub switchbot-ctrl-mcp-java</a></li>
+  </ul>
+
+  <h3>分析プロンプト・製造プロンプト・Codex結果</h3>
+
+  <ul class="phase-list">
+    <li>
+      <h3><span class="badge badge-phase">Phase 1</span> SwitchBotApisV2 作成</h3>
+      <p class="small">
+        低レイヤーSwitchBot APIクライアントの責務を整理した工程。
+        初回分析はNoGoとし、MCP固有責務を混入させないようにスコープを切り直した。
+      </p>
+      <ul class="links">
+        <li><span class="badge badge-nogo">NoGo</span> <a href="./Work079_p01v1_A.md">Work079_p01v1_A.md: 初回分析依頼プロンプト</a></li>
+        <li><a href="./Work079_p01v1_B.md">Work079_p01v1_B.md: Codex分析結果</a></li>
+        <li><span class="badge badge-go">Go</span> <a href="./Work079_p01v2_A.md">Work079_p01v2_A.md: スコープ修正版 分析依頼プロンプト</a></li>
+        <li><a href="./Work079_p01v2_B.md">Work079_p01v2_B.md: Codex分析結果</a></li>
+        <li><a href="./Work079_p01v2_C.md">Work079_p01v2_C.md: 製造依頼プロンプト</a></li>
+      </ul>
+    </li>
+
+    <li>
+      <h3><span class="badge badge-phase">Phase 2</span> SceneCatalog / SceneSummary / SwitchBotScenesConverter 作成</h3>
+      <p class="small">
+        SwitchBot APIのraw JSONをそのままLLMへ渡さず、人間が管理するsceneCatalog.jsonとinner joinする公開制御層を作った工程。
+      </p>
+      <ul class="links">
+        <li><span class="badge badge-go">Go</span> <a href="./Work079_p02v1_A.md">Work079_p02v1_A.md: 分析依頼プロンプト</a></li>
+        <li><a href="./Work079_p02v1_B.md">Work079_p02v1_B.md: Codex分析結果</a></li>
+        <li><a href="./Work079_p02v1_C.md">Work079_p02v1_C.md: 製造依頼プロンプト</a></li>
+      </ul>
+    </li>
+
+    <li>
+      <h3><span class="badge badge-phase">Phase 3</span> SceneService / cooldown / dry-run 作成</h3>
+      <p class="small">
+        MCP Toolから使いやすいサービス層を作った工程。
+        初回分析後にcooldown / dry-runの配置を再検討し、SceneServiceへ寄せる判断を行った。
+      </p>
+      <ul class="links">
+        <li><span class="badge badge-nogo">NoGo</span> <a href="./Work079_p03v1_A.md">Work079_p03v1_A.md: 初回分析依頼プロンプト</a></li>
+        <li><a href="./Work079_p03v1_B.md">Work079_p03v1_B.md: Codex分析結果</a></li>
+        <li><span class="badge badge-go">Go</span> <a href="./Work079_p03v2_A.md">Work079_p03v2_A.md: 追加仕様込み再分析依頼プロンプト</a></li>
+        <li><a href="./Work079_p03v2_B.md">Work079_p03v2_B.md: Codex分析結果</a></li>
+        <li><a href="./Work079_p03v2_C.md">Work079_p03v2_C.md: 製造依頼プロンプト</a></li>
+      </ul>
+    </li>
+
+    <li>
+      <h3><span class="badge badge-phase">Phase 4</span> SwitchBot制御用 McpServlet 作成</h3>
+      <p class="small">
+        BaseMcpServletを拡張し、SceneServiceをMCP Toolとして公開した最終工程。
+        Toolはscenes / executeSceneの2つに限定し、refreshScenesは公開しない方針とした。
+      </p>
+      <ul class="links">
+        <li><span class="badge badge-go">Go</span> <a href="./Work079_p04v1_A.md">Work079_p04v1_A.md: 分析依頼プロンプト</a></li>
+        <li><a href="./Work079_p04v1_B.md">Work079_p04v1_B.md: Codex分析結果</a></li>
+        <li><a href="./Work079_p04v1_C.md">Work079_p04v1_C.md: 製造依頼プロンプト</a></li>
+      </ul>
+    </li>
+  </ul>
+
+  <h3>関連Work</h3>
+  <ul>
+    <li><a href="../work_reports/Work073.md">Work073: Portainer MCP構築・Open WebUI連携・Java自作MCP基盤</a></li>
+    <li><a href="../work_reports/Work074.md">Work074: Portainer Ops MCP Java Server構築とDocker監視DTO設計</a></li>
+    <li><a href="../work_reports/Work075.md">Work075: Codexバイブコーディング環境構築とクイズゲームUI改造検証</a></li>
+    <li><a href="../work_reports/Work076.md">Work076: Codexバイブコーディング量産工場に向けたGitブランチ運用の習得</a></li>
+  </ul>
+
+  <div class="footer-nav">
+    <p>
+      <a href="../work_reports/index.html">公開済み実レポート一覧へ戻る</a> /
+      <a href="../index.html">AI / LLM 技術ポートフォリオへ戻る</a>
+    </p>
+  </div>
+</body>
+</html>
