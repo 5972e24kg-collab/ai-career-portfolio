@@ -1,0 +1,975 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>記憶と文脈を維持するAIエージェント - AI / LLM 技術ポートフォリオ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    :root {
+      --text: #222;
+      --muted: #57606a;
+      --border: #d0d7de;
+      --bg-soft: #f6f8fa;
+      --bg-blue: #ddf4ff;
+      --bg-green: #dafbe1;
+      --bg-purple: #fbefff;
+      --bg-yellow: #fff8c5;
+      --blue: #0969da;
+      --green: #1a7f37;
+      --orange: #bc4c00;
+      --red: #cf222e;
+      --purple: #8250df;
+      --dark: #0f172a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.85;
+      max-width: 1080px;
+      margin: 40px auto;
+      padding: 0 20px 60px;
+      color: var(--text);
+      background: #fff;
+    }
+
+    h1, h2, h3 {
+      line-height: 1.35;
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.3em;
+      letter-spacing: -0.02em;
+    }
+
+    h2 {
+      margin-top: 2.4em;
+      padding-bottom: 0.25em;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h3 {
+      margin-top: 1.6em;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration-thickness: 0.08em;
+      text-underline-offset: 0.16em;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      background: rgba(175, 184, 193, 0.2);
+      padding: 0.15em 0.35em;
+      border-radius: 6px;
+      font-size: 0.95em;
+    }
+
+    pre {
+      background: #f6f8fa;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      line-height: 1.55;
+      margin: 18px 0;
+    }
+
+    pre code {
+      background: transparent;
+      padding: 0;
+      border-radius: 0;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 1.1rem;
+      margin-top: 0;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin: 20px 0 28px;
+    }
+
+    .lead {
+      background: var(--bg-soft);
+      border-left: 5px solid var(--blue);
+      padding: 18px 20px;
+      margin: 24px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .note {
+      background: var(--bg-soft);
+      border-left: 4px solid var(--muted);
+      padding: 12px 16px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .warning {
+      background: var(--bg-yellow);
+      border-left: 4px solid #9a6700;
+      padding: 12px 16px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .highlight {
+      background: var(--bg-blue);
+      border-left: 4px solid var(--blue);
+      padding: 14px 16px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .takeaway {
+      background: var(--bg-green);
+      border-left: 4px solid var(--green);
+      padding: 14px 16px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .toc {
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 28px 0;
+    }
+
+    .toc ol {
+      margin: 0;
+      padding-left: 1.4em;
+    }
+
+    .toc li {
+      margin: 4px 0;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin: 20px 0;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin: 20px 0;
+    }
+
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      background: #fff;
+    }
+
+    .card h3 {
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+
+    .card p {
+      margin-bottom: 0;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-right: 6px;
+      margin-bottom: 6px;
+      background: var(--bg-soft);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    .badge-core {
+      color: var(--blue);
+      border-color: rgba(9, 105, 218, 0.35);
+      background: rgba(9, 105, 218, 0.10);
+    }
+
+    .badge-memory {
+      color: var(--green);
+      border-color: rgba(26, 127, 55, 0.35);
+      background: rgba(46, 160, 67, 0.10);
+    }
+
+    .badge-output {
+      color: var(--purple);
+      border-color: rgba(130, 80, 223, 0.35);
+      background: rgba(130, 80, 223, 0.10);
+    }
+
+    .badge-risk {
+      color: var(--orange);
+      border-color: rgba(188, 76, 0, 0.35);
+      background: rgba(251, 143, 68, 0.12);
+    }
+
+    .comparison {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin: 20px 0;
+    }
+
+    .comparison .box {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      background: #fff;
+    }
+
+    .comparison .box h3 {
+      margin-top: 0;
+    }
+
+    .flow {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      margin: 22px 0;
+      background: linear-gradient(180deg, #ffffff 0%, #f6f8fa 100%);
+    }
+
+    .flow-title {
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .flow pre {
+      margin: 0;
+      background: #fff;
+    }
+
+    .pipeline {
+      list-style: none;
+      padding: 0;
+      margin: 18px 0;
+      display: grid;
+      gap: 12px;
+    }
+
+    .pipeline li {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      background: #fff;
+      position: relative;
+    }
+
+    .pipeline li strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .step {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.8em;
+      height: 1.8em;
+      border-radius: 999px;
+      background: var(--dark);
+      color: #fff;
+      font-size: 0.85em;
+      font-weight: 700;
+      margin-right: 8px;
+    }
+
+    .evidence {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      background: var(--bg-soft);
+      margin: 24px auto;
+      max-width: 760px;
+    }
+
+    .evidence img {
+      display: block;
+      width: 100%;
+      max-width: 640px;
+      max-height: 360px;
+      object-fit: contain;
+      margin: 0 auto;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background:
+        linear-gradient(45deg, #f6f8fa 25%, transparent 25%),
+        linear-gradient(-45deg, #f6f8fa 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #f6f8fa 75%),
+        linear-gradient(-45deg, transparent 75%, #f6f8fa 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    }
+
+    .evidence figcaption {
+      color: var(--muted);
+      font-size: 0.92rem;
+      margin-top: 10px;
+      text-align: center;
+    }
+
+    .image-placeholder {
+      width: 100%;
+      max-width: 640px;
+      min-height: 220px;
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      background: #fff;
+      margin: 0 auto;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .materials {
+      display: grid;
+      gap: 12px;
+      margin: 18px 0;
+    }
+
+    .material {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      background: #fff;
+    }
+
+    .material strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .links {
+      margin: 10px 0 0;
+      padding-left: 1.2em;
+    }
+
+    .links li {
+      margin: 4px 0;
+    }
+
+    .footer-nav {
+      margin-top: 48px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 0.95em;
+    }
+
+    @media (max-width: 640px) {
+      body {
+        margin-top: 24px;
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+
+      h1 {
+        font-size: 1.65rem;
+      }
+
+      .lead, .toc, .card, .flow, .evidence {
+        border-radius: 10px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <h1>記憶と文脈を維持するAIエージェント</h1>
+  <p class="subtitle">LINE / Oracle / Director-Actor / ローカルLLM / 音声・VRMアバターを統合した実運用型チャットボット基盤</p>
+
+  <p class="meta">
+    Tag:
+    <span class="badge badge-core">LLM</span>
+    <span class="badge badge-core">Local AI Agent</span>
+    <span class="badge badge-memory">Memory Architecture</span>
+    <span class="badge badge-memory">Oracle</span>
+    <span class="badge badge-core">Director / Actor</span>
+    <span class="badge badge-output">LINE Bot</span>
+    <span class="badge badge-output">TTS</span>
+    <span class="badge badge-output">VRM Avatar</span>
+    <span class="badge badge-risk">System Design</span>
+  </p>
+
+  <div class="lead">
+    <strong>このページの主題:</strong><br>
+    本ページは、単なるLINE Botやキャラクターチャットの紹介ではありません。
+    ステートレスなLINE Messaging APIとLLMに対し、会話履歴、短期記憶、長期記憶、Director / Actor分離、音声・アバター出力を外部システムとして統合し、
+    <strong>記憶と文脈を維持するAIエージェント</strong>として成立させた個人研究の技術記録です。
+  </div>
+
+  <div class="toc">
+    <strong>目次</strong>
+    <ol>
+      <li><a href="#intro">はじめに：これは単なるチャットボットではない</a></li>
+      <li><a href="#difference">普通のチャットボットとの違い</a></li>
+      <li><a href="#why-chatbot">なぜチャットボットを題材にしたのか</a></li>
+      <li><a href="#local">なぜローカルLLMだったのか</a></li>
+      <li><a href="#architecture">全体構成：VPS + VPN + 自宅LLM基盤</a></li>
+      <li><a href="#llm">LLM構成：Director / Actor分離</a></li>
+      <li><a href="#memory">記憶レイヤ：短期記憶と長期記憶</a></li>
+      <li><a href="#pipeline">実行パイプライン：入力から応答まで</a></li>
+      <li><a href="#demo">実行例：外部技術交流会デモ</a></li>
+      <li><a href="#body">音声・VRMアバター・感情表現への分岐</a></li>
+      <li><a href="#ops">運用上の制約と対策</a></li>
+      <li><a href="#knowledge">得られた知見</a></li>
+      <li><a href="#materials">関連技術レポート</a></li>
+    </ol>
+  </div>
+
+  <h2 id="intro">1. はじめに：これは単なるチャットボットではない</h2>
+
+  <p>
+    本システムは、個人研究として構築したローカルLLMベースのAIエージェントである。
+    入り口はLINEであり、ユーザーから見ると通常の公式LINEアカウントに話しかけているように見える。
+    しかし内部では、会話履歴、記憶データ、Director / Actor分離、音声合成、アバター制御、次回会話に向けた記憶更新が連動している。
+  </p>
+
+  <p>
+    目指したのは「その場で質問に答えるチャットボット」ではない。
+    ユーザーとの対話を継続的な文脈として扱い、過去の会話や現在のシーンを踏まえ、必要に応じて音声・表情・字幕・記憶更新へ分岐するAIエージェントである。
+  </p>
+
+  <div class="highlight">
+    重要なのは、モデル単体の性能ではなく、LLMの弱点を前提にした外部アーキテクチャ設計である。
+    ステートレスなAPIとLLMの外側に、記憶、状態、責務分離、出力後処理、UI表現を組み合わせることで、継続的な対話体験を成立させている。
+  </div>
+
+  <h2 id="difference">2. 普通のチャットボットとの違い</h2>
+
+  <p>
+    LINE Messaging APIからWebhookに届くイベントは、その時点のユーザー発話や操作を表す単発の入力である。
+    また、LLMも基本的には渡されたプロンプトに対して、その場で推論して応答を返す。
+    つまり、LINEもLLMも、そのまま扱うとステートレスである。
+  </p>
+
+  <p>
+    そのため、ユーザー発話だけをLLMへ渡すと、過去の会話や関係性を理解しない「その場限りの回答」になる。
+    本システムでは、Oracleに保存した会話履歴、短期記憶、長期記憶をJava APIが取得し、プロンプトとして再構成してからLLMへ渡している。
+  </p>
+
+  <div class="comparison">
+    <div class="box">
+      <h3>通常の単発チャットボット</h3>
+      <ul>
+        <li>ユーザー発話をそのままLLMへ渡す</li>
+        <li>過去文脈は会話履歴の範囲に依存</li>
+        <li>人格・状態・記憶の管理が曖昧</li>
+        <li>出力は主にテキストのみ</li>
+      </ul>
+    </div>
+
+    <div class="box">
+      <h3>本システム</h3>
+      <ul>
+        <li>Oracle上の記憶データをプロンプトへ注入</li>
+        <li>短期記憶と長期記憶を分離</li>
+        <li>Directorが文脈を解釈し、Actorが応答を生成</li>
+        <li>テキスト、音声、表情、アバター、記憶更新へ分岐</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 id="why-chatbot">3. なぜチャットボットを題材にしたのか</h2>
+
+  <p>
+    当初の個人研究は、LLMの特性を理解するためのものだった。
+    LLMは自然言語を入力として受け取り、文脈から推論し、自然言語で回答する。
+    この構造は非常に強力である一方、従来のルールベースプログラムとは異なり、出力が完全には固定されない。
+  </p>
+
+  <p>
+    この「ゆれる」性質は、業務システムの制御対象としては扱いづらい。
+    しかし、対話や寄り添いのように、毎回同じ返答であることが必ずしも価値にならない領域では、むしろ長所として利用できる。
+  </p>
+
+  <p>
+    そこで本研究では、LLMのゆらぎを無理に消すのではなく、記憶・文脈・出力制御によって方向付ける方針を採用した。
+    チャットボットという題材は、LLMの入力、推論、出力、記憶、UI体験のすべてを観測しやすく、システム設計力を鍛える実験台として適していた。
+  </p>
+
+  <div class="note">
+    本ページでは、個人用のキャラクター性やエンターテイメント要素は主題にしない。
+    技術ポートフォリオとして、記憶と文脈を維持するAIエージェントの設計に焦点を当てる。
+  </div>
+
+  <h2 id="local">4. なぜローカルLLMだったのか</h2>
+
+  <p>
+    クラウドモデルは非常に高性能であり、単純な応答品質だけを見ればローカルLLMより有利である。
+    しかし、高性能なクラウドモデルは、曖昧な指示を自然に補完してしまうため、どの設計が効いていて、どの設計が効いていないのかを観測しづらい。
+  </p>
+
+  <p>
+    一方、ローカルLLMは制約が多い。
+    プロンプト設計が甘ければ応答も崩れ、文脈管理が弱ければすぐに破綻する。
+    この「正直な不便さ」により、プロンプト、記憶、責務分離、モデル選定、出力制御の良し悪しが観測しやすい。
+  </p>
+
+  <p>
+    さらにローカル環境では、QLoRAによる追加学習や、Director / Actorのモデル差し替え、推論基盤のチューニングを自分で試すことができる。
+    本システムでは、ROCm側の大容量VRAM環境とCUDA側のRTX 3090環境を組み合わせ、巨大モデルによる文脈解釈と、チューニング済みActorによる応答生成を分担させている。
+  </p>
+
+  <div class="grid-3">
+    <div class="card">
+      <h3>ROCm / Strix Halo</h3>
+      <p>
+        <code>gpt-oss:120b</code> をDirectorや記憶要約に利用する大容量推論基盤。
+        文脈解析や台本生成など、重い思考処理を担当する。
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>CUDA / RTX 3090</h3>
+      <p>
+        <code>gemma4:26b(FT)</code> をActorとして運用する推論・学習基盤。
+        QLoRA学習やActorモデルの本番運用を担当する。
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>Oracle / Java API</h3>
+      <p>
+        会話ログ、短期記憶、長期記憶、セッションを管理する状態保持層。
+        ステートレスなLINEとLLMの間に、永続的な文脈を挿入する。
+      </p>
+    </div>
+  </div>
+
+  <h2 id="architecture">5. 全体構成：VPS + VPN + 自宅LLM基盤</h2>
+
+  <p>
+    全体構成は、外部公開する入口と、自宅内のLLM基盤を分離している。
+    グローバル側ではLINE Webhookを受け取り、内部の制御APIへ中継する。
+    自宅側では、VPNの先にあるJava API、Oracle、Ollama、音声合成、アバター制御が役割ごとに連携する。
+  </p>
+
+  <div class="flow">
+    <div class="flow-title">外部入力から自宅LLM基盤までの大まかな経路</div>
+    <pre><code>LINE Messaging API
+└─ Webhook
+   └─ VPS上のJava WebAPI
+      └─ VPN / DMZ proxy
+         └─ 自宅LLM基盤
+            ├─ Java WebAPI
+            ├─ Oracle Database
+            ├─ Ollama ROCm / CUDA
+            ├─ TTS API
+            └─ React Avatar Frontend</code></pre>
+  </div>
+
+  <p>
+    セキュリティ上、詳細なIPアドレス、ポート番号、ホスト名、公開URLは掲載しない。
+    公開できる範囲は、<strong>VPS + VPN + 自宅LLM基盤</strong>という構成レベルに留める。
+  </p>
+
+  <div class="warning">
+    本番セッションとデモセッションは分離している。
+    外部デモでは、本番環境の個人的な長期記憶を参照しないよう、デモ用セッションとデモ用記憶を用意している。
+  </div>
+
+  <h2 id="llm">6. LLM構成：Director / Actor分離</h2>
+
+  <p>
+    本システムの中核は、Director / Actor分離である。
+    1つのモデルに「文脈理解」「関係性管理」「返答方針」「口調」「出力形式順守」をすべて背負わせるのではなく、
+    <strong>何を言うか</strong>と<strong>どう言うか</strong>を分けている。
+  </p>
+
+  <div class="comparison">
+    <div class="box">
+      <h3>Director</h3>
+      <p>
+        <code>gpt-oss:120b</code> を使用する。
+        ユーザー発話、直近文脈、長期記憶、短期記憶を読み、Actor用の台本JSONを生成する。
+        役割は、文脈解釈、目的設定、禁止事項整理、応答方針の決定である。
+      </p>
+    </div>
+
+    <div class="box">
+      <h3>Actor</h3>
+      <p>
+        <code>gemma4:26b(FT)</code> を使用する。
+        Directorが生成した台本JSONを受け取り、最終的な応答テキスト、音声用セリフ、感情タグを生成する。
+        役割は、表現、テンポ、口調、ユーザーに見える最終応答である。
+      </p>
+    </div>
+  </div>
+
+  <div class="flow">
+    <div class="flow-title">Director / Actor の責務分離</div>
+    <pre><code>ユーザー発話 + 会話履歴 + 記憶データ
+└─ Director @ gpt-oss:120b
+   └─ actor用 script_json
+      └─ Actor @ gemma4:26b(FT)
+         └─ reaction_data
+            ├─ chat_line
+            ├─ voice_line
+            └─ emotion_tags</code></pre>
+  </div>
+
+  <p>
+    この構成により、Actor側は長大な履歴や複雑な関係性管理から解放される。
+    Actorは台本に従って演技することに集中できるため、モデル差し替えや出力形式の管理がしやすくなる。
+  </p>
+
+  <h2 id="memory">7. 記憶レイヤ：短期記憶と長期記憶</h2>
+
+  <p>
+    記憶は1種類ではない。
+    会話の直近文脈を保つ短期記憶と、数日単位で残す長期記憶を分けている。
+    この分離により、今の会話の流れと、過去から続く関係性・傾向を同時に扱えるようにしている。
+  </p>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Recent Chat Context</h3>
+      <p>
+        直近の会話ログ。
+        現在の話題、直前の発話、短い応答の流れを保持する。
+        生ログに近い形で使うことで、即時性のある文脈を維持する。
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>Current Scene Summary</h3>
+      <p>
+        現在進行中の会話シーンを短く要約した記憶。
+        直近のuser input、director script、actor output、前回summaryを元に更新する。
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>Long-term Memory</h3>
+      <p>
+        数日分の記録を圧縮した長期記憶。
+        関係性、最近の傾向、未完了の話題、有用な想起情報などを保持し、次回以降の会話に利用する。
+      </p>
+    </div>
+  </div>
+
+  <p>
+    初期段階では、長文の要約記憶をそのまま会話履歴へ混ぜることで、文体感染や冗長化が発生した。
+    その後、思考と出力を分離する設計、さらにDirector / Actor分離へ発展させ、記憶を直接Actorに背負わせない構成に整理した。
+  </p>
+
+  <div class="takeaway">
+    記憶は「全部をLLMに渡す」ほどよいわけではない。
+    どの記憶を、どの粒度で、どのモデルに渡すかを設計することが、長期運用型AIエージェントの品質を左右する。
+  </div>
+
+  <h2 id="pipeline">8. 実行パイプライン：入力から応答まで</h2>
+
+  <p>
+    ユーザーがLINEでメッセージを送信すると、内部では次の処理が行われる。
+    ここで重要なのは、ユーザー発話が直接Actorに渡されるのではなく、Directorによる台本生成を経由する点である。
+  </p>
+
+  <ol class="pipeline">
+    <li>
+      <strong><span class="step">1</span>LINE Webhook受信</strong>
+      VPS上のJava WebAPIがイベントを受け取り、message、postbackなどのイベント種別を判定する。
+    </li>
+    <li>
+      <strong><span class="step">2</span>セッション・権限制御</strong>
+      対象ユーザー、対象セッション、デモ用/本番用の切り分けを行う。
+    </li>
+    <li>
+      <strong><span class="step">3</span>Oracleから記憶取得</strong>
+      Recent Chat Context、Current Scene Summary、Long-term Memoryを取得し、Director用プロンプトへ整形する。
+    </li>
+    <li>
+      <strong><span class="step">4</span>Directorが台本JSONを生成</strong>
+      目的、話題、トーン、必須要素、避ける表現、応答長などを整理したscript_jsonを出力する。
+    </li>
+    <li>
+      <strong><span class="step">5</span>Actorが最終応答を生成</strong>
+      script_jsonを元に、LINE向けテキスト、音声用セリフ、感情タグを含むreaction_dataを生成する。
+    </li>
+    <li>
+      <strong><span class="step">6</span>出力分岐</strong>
+      LINE返信、音声合成、SSEによるアバター制御、記憶更新へ分岐する。
+    </li>
+  </ol>
+
+  <h2 id="demo">9. 実行例：外部技術交流会デモ</h2>
+
+  <p>
+    以下は、外部技術交流会で使用したデモ用セッションの実行例である。
+    本番セッションの個人的な記憶とは分離し、デモ用のLong-term Memoryのみを注入している。
+  </p>
+
+  <p>
+    この例では、ユーザー発話を直接Actorへ渡していない。
+    Directorが文脈、目的、必須要素、禁止事項を整理した台本JSONを生成し、Actorが最終的なLINE向け応答を生成している。
+  </p>
+
+  <h3>9-1. Director入力の要約</h3>
+
+  <pre><code>[Task]
+次の材料を読み、actor 用 script_json を 1 個だけ返す。
+出力は JSON のみ。
+セリフ本文は書かない。
+
+[Last User Message]
+外部技術交流会にいる。
+初めて見る人向けに、構成を30秒で自己紹介して。
+
+[Recent Chat Context]
+デモ用セッションとして、LINE Webhook、Director、Actor、本番とは別セッションであることを説明済み。
+
+[Long-term Memory]
+- デモ用AIエージェントは、本番環境とは別セッションで動く公開デモ用の個体である
+- LINE連携型ローカルLLMエージェントの構成を短く説明する役割を持つ
+- 本番用の個人的な生活記憶は参照しない
+- 技術説明では、LINE、Java Webhook、DB、Director、Actorの流れを簡潔に述べる</code></pre>
+
+  <h3>9-2. Director出力：Actor用台本JSON</h3>
+
+  <pre><code>{
+  "schema_version": "1.0-min",
+  "cue_type": "chat_reply",
+  "goal": "30秒でAI構成を簡潔に紹介する",
+  "topic_anchor": "AI構成概要",
+  "topic_mode": "direct_reply",
+  "surface_tone": "light_character",
+  "subtext": "デモ用セッションであることを明確にしつつ、LINE Webhook → Director → Actor → DB管理の流れを説明する",
+  "must_include": [
+    "LINEのWebhookでメッセージを受け取り、Directorが指示を出し、Actorが応答を生成する",
+    "デモ用なので本番環境とは別セッションで動いている"
+  ],
+  "avoid": [
+    "本番と同じ環境だと誤解させる表現",
+    "曖昧な専門用語だけで説明すること",
+    "過度に自己卑下する言い回し"
+  ],
+  "chat_length_max": 100,
+  "voice_length_max": 150,
+  "end_style": "soft_hook"
+}</code></pre>
+
+  <h3>9-3. Actor出力：最終応答</h3>
+
+  <pre><code>&lt;performance&gt;
+  &lt;voice_line&gt;説明します。私はLINEのWebhookから届いたメッセージを、DirectorとActorに分けて処理するAIエージェントです。&lt;/voice_line&gt;
+  &lt;chat_line&gt;私はLINEのWebhookでメッセージを受け取り、Directorが指示を出して、Actorが応答を生成する仕組みで動いています。デモ用なので本番とは別セッションです。&lt;/chat_line&gt;
+  &lt;emotion_tags&gt;
+    &lt;emotion primary="説明" secondary="自信" /&gt;
+  &lt;/emotion_tags&gt;
+&lt;/performance&gt;</code></pre>
+
+  <figure class="evidence">
+    <img src="./demo-agent-screenshot.png" alt="デモ用AIエージェントのLINE応答例">
+    <figcaption>
+      外部技術交流会で使用したデモ用セッションの応答例をここに掲載する。
+      本番セッションとは分離した環境で、Director / Actor / Memory の処理結果をLINE上に返していることの動作証跡として扱う。
+    </figcaption>
+  </figure>
+
+  <h2 id="body">10. 音声・VRMアバター・感情表現への分岐</h2>
+
+  <p>
+    Actorの出力は、LINEのテキスト返信だけで終わらない。
+    reaction_dataは、音声合成、感情パラメータ、アバター制御、記憶更新へ分岐する。
+    これにより、チャットボットをテキストだけの存在ではなく、複数の出力チャンネルを持つAIエージェントとして扱っている。
+  </p>
+
+  <div class="flow">
+    <div class="flow-title">reaction_data の出力分岐</div>
+    <pre><code>reaction_data
+├─ chat_line
+│  └─ LINEへ返信
+├─ voice_line
+│  └─ StyleBertVITS2で音声合成
+├─ emotion_tags
+│  └─ 感情パラメータ化
+├─ SSE
+│  └─ React / VRMアバターへ字幕・表情・音声URLを配信
+└─ memory update
+   └─ 次回会話に備えてOracleへ保存</code></pre>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>音声合成</h3>
+      <p>
+        StyleBertVITS2をDocker環境で運用し、音声ファイルを生成する。
+        初期化に必要なモデルやキャッシュを永続化し、再起動後も短時間で発声できるようにした。
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>SSE制御</h3>
+      <p>
+        音声ファイルURL、字幕、感情パラメータをServer-Sent EventsでReactフロントエンドへ送信する。
+        双方向通信ではなく、AI側から肉体側への単方向プッシュとして設計している。
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>VRMアバター</h3>
+      <p>
+        React Three Fiber、Zustand、VRM、AnimationMixerを用いて、表情、字幕、モーション、カメラ制御を行う。
+        見た目ではなく、LLM出力の身体的な表示先として位置づけている。
+      </p>
+    </div>
+  </div>
+
+  <p>
+    この章で重要なのは、アバターをエンターテイメントとして前面に出すことではない。
+    LLMが生成した構造化出力を、テキスト、音声、表情、動作へ分岐させることで、AIエージェントの出力面を拡張している点である。
+  </p>
+
+  <h2 id="ops">11. 運用上の制約と対策</h2>
+
+  <p>
+    本システムは、実験用のサンプルコードではなく、実際にLINEから利用する前提で構築している。
+    そのため、モデルの推論遅延、LINE APIの制約、GPUの常時稼働、デモ環境分離など、実運用上の制約に対処している。
+  </p>
+
+  <div class="grid">
+    <div class="card">
+      <h3>LINE reply / push 切り替え</h3>
+      <p>
+        ローカルLLMの推論には時間がかかる。
+        replyTokenで返信を試み、失敗した場合にpushへ切り替えることで、LINE側の有効期限制約に対応している。
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>デモセッション分離</h3>
+      <p>
+        外部公開用のデモでは、本番用の個人的な長期記憶を参照しない。
+        セッションID、ユーザーID、記憶データを分け、公開デモ用の安全な文脈だけを使う。
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>GPU常駐時の安定化</h3>
+      <p>
+        大規模モデルを常駐させると、推論していない状態でもハードウェア・ランタイム由来の負荷が出る場合がある。
+        ROCm環境変数やコンテナ設定を調整し、常時稼働に耐える構成へ寄せている。
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>公開情報のマスク</h3>
+      <p>
+        IPアドレス、ポート、ホスト名、個人用の会話ログ、生活文脈、認証情報は公開しない。
+        技術的に意味のある構成情報だけを残し、運用上のリスクを下げる。
+      </p>
+    </div>
+  </div>
+
+  <h2 id="knowledge">12. 得られた知見</h2>
+
+  <p>
+    本システムを通じて得た最大の知見は、LLMアプリケーションはモデル単体では成立しない、ということである。
+    継続的なAIエージェントを成立させるには、モデルの外側にある設計が重要になる。
+  </p>
+
+  <ul>
+    <li>LLMはステートレスなので、状態は外部システムで管理する必要がある。</li>
+    <li>記憶は単なる履歴ではなく、短期・長期・現在シーンに分ける必要がある。</li>
+    <li>1つのモデルに全責務を背負わせると、出力が不安定になりやすい。</li>
+    <li>Director / Actor分離により、文脈理解と表現生成を切り分けられる。</li>
+    <li>ローカルLLMは不便だが、その不便さにより制御設計の良し悪しを観測しやすい。</li>
+    <li>テキスト応答だけでなく、音声・表情・字幕・記憶更新まで含めて設計すると、AIエージェントとしての体験が成立する。</li>
+  </ul>
+
+  <div class="takeaway">
+    本システムは、ローカルLLM、Java WebAPI、Oracle、LINE、TTS、React / VRM、SSE、QLoRAを組み合わせた個人研究の集大成である。
+    目的は、単に面白いチャットボットを作ることではなく、LLMを実システムへ組み込むための状態管理、責務分離、出力制御、運用設計を実地で学ぶことだった。
+  </div>
+
+  <h2 id="materials">13. 関連技術レポート</h2>
+
+  <p>
+    本ページは概要ページであり、詳細な試行錯誤は以下の技術レポートに分かれている。
+    実際の開発では、成功した構成だけではなく、失敗、制約、方針転換、運用上の問題も含めて記録している。
+  </p>
+
+  <div class="materials">
+    <div class="material">
+      <strong><a href="../work_reports/Work050.md">Work050: 長期記憶化と電源保護の設計</a></strong>
+      <span class="small">短期ログと長期要約を分け、会話文脈を翌日以降へ引き継ぐ記憶設計。</span>
+    </div>
+
+    <div class="material">
+      <strong><a href="../work_reports/Work051.md">Work051: Dual-Phase ThinkingとContext Isolation</a></strong>
+      <span class="small">長文記憶による文体感染を避けるため、思考と出力を分離した初期設計。</span>
+    </div>
+
+    <div class="material">
+      <strong><a href="../work_reports/Work055.md">Work055: StyleBertVITS2音声合成基盤構築と永続化</a></strong>
+      <span class="small">音声合成基盤をDockerで構築し、モデル・キャッシュを永続化して高速起動化した記録。</span>
+    </div>
+
+    <div class="material">
+      <strong><a href="../work_reports/Work062.md">Work062: EVO-X2アイドル時のCPUファン暴走とROCmスピンロック解消</a></strong>
+      <span class="small">大規模モデル常駐時のROCm/HSAランタイム由来の負荷を調査・解消した運用記録。</span>
+    </div>
+
+    <div class="material">
+      <strong><a href="../work_reports/Work064.md">Work064: VRMアニメーション制御とReact基盤最適化</a></strong>
+      <strong><a href="../work_reports/Work065.md">Work065: アバターフロントエンド基盤の完成</a></strong>
+      <strong><a href="../work_reports/Work066.md">Work066: VRMアニメーションの完全In-Place化</a></strong>
+      <strong><a href="../work_reports/Work067.md">Work067: 外部モーションアセットのVRMA変換パイプライン構築</a></strong>
+      <strong><a href="../work_reports/Work068.md">Work068: 自律歩行システムとR3F空間補正</a></strong>
+      <span class="small">React Three Fiber、VRM、Zustand、AnimationMixer、VRMA変換、自律歩行制御の実装記録。</span>
+    </div>
+
+    <div class="material">
+      <strong><a href="../work_reports/Work071.md">Work071: Director / Actor分離型チャットボットv2設計と記憶レイヤ再設</a></strong>
+      <span class="small">Director / Actor分離、台本JSON、短期記憶・長期記憶の再設計。</span>
+    </div>
+
+    <div class="material">
+      <strong><a href="../work_reports/Work072.md">Work072: Gemma 4 26B A4B のQLoRA成立とGGUF/Ollama本番化</a></strong>
+      <span class="small">26BクラスActorモデルのQLoRA学習、GGUF化、Ollama本番運用までの検証記録。</span>
+    </div>
+  </div>
+
+  <div class="footer-nav">
+    <p>
+      <a href="../work_reports/index.html">公開済み実レポート一覧へ戻る</a> /
+      <a href="../index.html">AI / LLM 技術ポートフォリオへ戻る</a>
+    </p>
+  </div>
+  <!-- Cloudflare Web Analytics -->
+    <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "8ce3e98ab99e430188efa5026f5eb166"}'></script>
+  <!-- End Cloudflare Web Analytics -->
+</body>
+</html>
