@@ -387,6 +387,79 @@
       font-size: 0.95em;
     }
 
+
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 18px 0;
+      font-size: 0.96rem;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--bg-soft);
+      text-align: left;
+    }
+
+    .video-wrap {
+      position: relative;
+      width: 100%;
+      max-width: 640px;
+      margin: 0 auto;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .video-wrap iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+
+    .timeline {
+      border-left: 3px solid var(--border);
+      margin: 20px 0 20px 8px;
+      padding-left: 18px;
+    }
+
+    .timeline-item {
+      margin: 0 0 18px;
+      position: relative;
+    }
+
+    .timeline-item::before {
+      content: "";
+      position: absolute;
+      left: -28px;
+      top: 0.65em;
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      background: var(--blue);
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 1px var(--border);
+    }
+
+    .timeline-item strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .failure-table th:nth-child(1) { width: 26%; }
+    .failure-table th:nth-child(2) { width: 34%; }
+    .failure-table th:nth-child(3) { width: 40%; }
+
     @media (max-width: 640px) {
       body {
         margin-top: 24px;
@@ -420,6 +493,7 @@
     <span class="badge badge-output">TTS</span>
     <span class="badge badge-output">VRM Avatar</span>
     <span class="badge badge-risk">System Design</span>
+    <span class="badge badge-risk">Failure Analysis</span>
   </p>
 
   <div class="lead">
@@ -427,6 +501,12 @@
     本ページは、単なるLINE Botやキャラクターチャットの紹介ではありません。
     ステートレスなLINE Messaging APIとLLMに対し、会話履歴、短期記憶、長期記憶、Director / Actor分離、音声・アバター出力を外部システムとして統合し、
     <strong>記憶と文脈を維持するAIエージェント</strong>として成立させた個人研究の技術記録です。
+  </div>
+
+  <div class="highlight">
+    本ページでは完成形だけではなく、そこに至るまでに踏み抜いた失敗も記録します。
+    長期記憶による文体感染、Actorモデルの構造化出力崩れ、ROCm常駐時のCPUファン暴走、VRMモーション制御、外部デモでの音声欠落、LT本番でのライブデモ失敗。
+    それらの失敗が、現在のアーキテクチャへ収束した理由です。
   </div>
 
   <div class="toc">
@@ -438,12 +518,16 @@
       <li><a href="#local">なぜローカルLLMだったのか</a></li>
       <li><a href="#architecture">全体構成：VPS + VPN + 自宅LLM基盤</a></li>
       <li><a href="#llm">LLM構成：Director / Actor分離</a></li>
+      <li><a href="#actor-evolution">Actorモデルの変遷と差し替え可能性</a></li>
       <li><a href="#memory">記憶レイヤ：短期記憶と長期記憶</a></li>
+      <li><a href="#context-infection">記憶を増やせばよいわけではなかった</a></li>
       <li><a href="#pipeline">実行パイプライン：入力から応答まで</a></li>
       <li><a href="#demo">実行例：外部技術交流会デモ</a></li>
       <li><a href="#body">音声・VRMアバター・感情表現への分岐</a></li>
+      <li><a href="#avatar-failures">身体性も、LLM出力をそのまま動かすだけでは成立しなかった</a></li>
+      <li><a href="#external">外部公開と実証：部屋の中のAIを外に出して分かったこと</a></li>
       <li><a href="#ops">運用上の制約と対策</a></li>
-      <li><a href="#knowledge">得られた知見</a></li>
+      <li><a href="#failure-principles">失敗から得た設計原則</a></li>
       <li><a href="#materials">関連技術レポート</a></li>
     </ol>
   </div>
@@ -645,6 +729,69 @@
     Actorは台本に従って演技することに集中できるため、モデル差し替えや出力形式の管理がしやすくなる。
   </p>
 
+
+
+  <h3 id="actor-evolution">6-1. Actorモデルの変遷と差し替え可能性の検証</h3>
+
+  <p>
+    Director / Actor分離は、単なる概念上の責務分離ではない。
+    実際の開発過程では、Actorモデルを複数回差し替えながら、応答品質、形式安定性、長期運用耐性を検証している。
+  </p>
+
+  <p>
+    フレームワークv1では、<code>gemma3:27b(FT)</code> に文脈理解と演技の両方を背負わせていた。
+    しかし、長期運用でコンテキストが蓄積すると、「私」「貴方」「……」など出現頻度の高い語彙が過剰に残り、語彙の崩れや出力の偏りが発生した。
+    文脈を保持したい一方で、文脈がActorの語彙と演技を汚染する。ここがv1の大きな限界だった。
+  </p>
+
+  <p>
+    v1の最終系では、会話序盤は <code>gemma3:27b(FT)</code> を多めに使い、コンテキストにActorらしい口調を残す。
+    会話が進み、語彙崩壊のリスクが高くなると、<code>gpt-oss:120b</code> の出現率を上げ、パラメータ規模で文脈維持と語彙崩壊を抑える構成にしていた。
+    しかし、この方式ではターンごとに演技品質が変わり、gpt-oss:120bが演じているターンは、内部構成を知っている開発者には高確率で判別できた。
+  </p>
+
+  <div class="flow">
+    <div class="flow-title">Actorモデルとフレームワークの変遷</div>
+    <pre><code>Framework v1
+├─ Actor: gemma3:27b(FT)
+└─ 補助的に gpt-oss:120b へ自動切り替え
+   ├─ 会話序盤: gemma3:27b(FT) で口調・人格の文脈を形成
+   └─ 会話後半: gpt-oss:120b の比率を上げ、語彙崩壊と文脈維持を補助
+
+Framework v2
+├─ Actor: gemma4:e4b(FT)
+│  └─ 新世代モデルとして期待したが、実戦では構造化出力の安定性に不安が残った
+├─ Actor: gemma3:27b(FT)
+│  └─ 安定性が改善。長期運用には20B級以上のモデル規模が必要と判断
+└─ Actor: gemma4:26b(FT)
+   └─ QLoRA成功後に本番Actorとして移行</code></pre>
+  </div>
+
+  <p>
+    v2化直後のActorには、一時的に <code>gemma4:e4b(FT)</code> を採用した。
+    新世代モデルとしての期待と、スコア上では旧世代27B級に迫る可能性があったためである。
+    しかし、実戦投入後の短期間で、構造化出力の安定性に不安があると判断し、一度 <code>gemma3:27b(FT)</code> へ戻している。
+  </p>
+
+  <p>
+    当時の失敗レスポンス全文は、現在のログ保持期間外のため残っていない。
+    そのため、具体的なXML崩れの実例は掲載しない。
+    ただし、v2化した2026年4月17日から、26B QLoRAへ再挑戦した2026年4月20日までの数日間でActorを差し替えていることから、
+    当時の実運用判断として、e4b Actorは長期運用に不十分と判断していたことは確かである。
+  </p>
+
+  <p>
+    その後、以前は一度撤退していた <code>gemma4:26b(FT)</code> のQLoRAに再挑戦し、本番Actorとして差し替えた。
+    2026年5月30日 22:00:08 時点で、v2化後の会話ログは No.573 まで進んでおり、そのうち約400件を26B Actorが担当している。
+    この範囲では、Actor出力のXMLフォーマット崩れは観測していない。
+  </p>
+
+  <div class="takeaway">
+    Actorを差し替えてもシステム全体を作り直さずに済んだことは、Director / Actor分離の設計が有効だったことを示している。
+    Directorが「何を言うか」を整理し、Actorが「どう言うか」を担当する構成にしたことで、Actorモデルの更新、退避、再投入、本番移行を段階的に検証できた。
+  </div>
+
+
   <h2 id="memory">7. 記憶レイヤ：短期記憶と長期記憶</h2>
 
   <p>
@@ -680,9 +827,48 @@
     </div>
   </div>
 
+  <h3 id="context-infection">7-1. 記憶を増やせばよいわけではなかった</h3>
+
   <p>
-    初期段階では、長文の要約記憶をそのまま会話履歴へ混ぜることで、文体感染や冗長化が発生した。
-    その後、思考と出力を分離する設計、さらにDirector / Actor分離へ発展させ、記憶を直接Actorに背負わせない構成に整理した。
+    長期記憶は、最初から現在の形だったわけではない。
+    初期の長期記憶は「日記」形式だった。
+    1日分の会話ログを <code>gpt-oss:120b</code> で主観的な日記に圧縮し、翌日のコンテキストへ注入することで、数千トークン規模の会話履歴を数百トークンに圧縮する構想である。
+  </p>
+
+  <p>
+    ところが、この日記を <code>role=assistant</code> として履歴に挿入したことが失敗だった。
+    約600文字の日記を履歴に挿入した結果、AIエージェントの回答文字数は平均166文字から422文字へ激増した。
+    システムプロンプトには「150文字以内」と書いていたにもかかわらず、モデルは直前のassistant発話である長文日記の文量と説明調に引っ張られた。
+  </p>
+
+  <div class="flow">
+    <div class="flow-title">Context Infection の発生</div>
+    <pre><code>日記形式の長期記憶
+└─ role=assistant として履歴へ挿入
+   └─ LLMが「直前のassistant出力」を模範として学習
+      ├─ 回答文字数が平均166文字 → 422文字へ増加
+      ├─ 語彙が不自然になる
+      └─ キャラクター出力が長文化・説明調へ崩れる</code></pre>
+  </div>
+
+  <p>
+    この失敗により、コンテキストの作用が非常に強いことを実感した。
+    LLMは明示的な命令だけで動くのではなく、直前に見せられた文体、分量、語彙を強く模倣する。
+    つまり、記憶を増やすだけでは文脈維持にならない。
+    記憶の置き場所、役割、粒度、渡す相手を設計しなければ、記憶そのものが出力を汚染する。
+  </p>
+
+  <p>
+    その後、日記は履歴ではなくsystem側の文脈材料へ寄せ、さらに <code>&lt;inner_voice&gt;</code> と <code>&lt;response&gt;</code> に分離したDual-Phase Thinkingを導入した。
+    <code>&lt;inner_voice&gt;</code> では文字数制限なしで感情処理と文脈整理を行い、<code>&lt;response&gt;</code> ではユーザーに見せる短い返答だけを生成する。
+    これにより、LLMが「考えたいだけ考える」性質を活かしつつ、ユーザーに届く出力は短く保てるようになった。
+  </p>
+
+  <p>
+    現在のDirector / Actor分離は、この失敗の延長線上にある。
+    記憶をActorへ直接背負わせるのではなく、Directorが長期記憶と短期記憶を読み、Actor用の台本JSONへ圧縮する。
+    Actorは、記憶本文ではなく台本を演じる。
+    この構造により、記憶の深さと出力の安定性を両立している。
   </p>
 
   <div class="takeaway">
@@ -798,6 +984,26 @@
     </figcaption>
   </figure>
 
+
+
+  <h3>9-4. 実演デモ動画</h3>
+
+  <p>
+    以下は、外部LTで使用した実演デモである。
+    LINE入力、Director / Actor構成、音声、アバター表示を短時間で確認できる動作証跡として掲載する。
+    ここでは見た目のインパクトそのものではなく、テキスト・音声・アバター・内部構成説明が連動している点を確認する。
+  </p>
+
+  <figure class="evidence">
+    <div class="video-wrap">
+      <iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/uBi6DTFLVZs?si=7u1xSl_BbNKYRH1G" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+    </div>
+    <figcaption>
+      外部LTで使用した実演デモ。LINE入力、Director / Actor構成、音声、アバター表示を含む動作証跡として掲載する。
+    </figcaption>
+  </figure>
+
+
   <h2 id="body">10. 音声・VRMアバター・感情表現への分岐</h2>
 
   <p>
@@ -852,7 +1058,180 @@
     LLMが生成した構造化出力を、テキスト、音声、表情、動作へ分岐させることで、AIエージェントの出力面を拡張している点である。
   </p>
 
-  <h2 id="ops">11. 運用上の制約と対策</h2>
+
+
+  <h3>10-1. 外部デモで初めて露出した音声配信の欠落</h3>
+
+  <p>
+    自室内では、React画面と音声再生サーバーが同じローカル環境にあり、声が届かない問題は見えなかった。
+    しかし外部デモ環境では、Reactアバター画面とSSEによる字幕・表情制御は表示できる一方、音声だけがローカル再生環境に依存しており、外部からは聞こえないことが分かった。
+  </p>
+
+  <p>
+    これは、AIエージェントを外に出したことで初めて露出した不足である。
+    画面と字幕と表情だけでは「AIの表示」に見えるが、声が加わるとアバターとしての存在感が大きく変わる。
+    そのため、音声もReact画面側で完結して再生できる構成へ変更した。
+  </p>
+
+  <div class="flow">
+    <div class="flow-title">外部デモ対応後の音声配信アーキテクチャ</div>
+    <pre><code>Java WebAPI / Tomcat
+  ↓
+StyleBertVITS2 で音声合成
+  ↓
+/voice/chat/[ChatNo]-[SEQNo].wav.tmp に保存
+  ↓
+保存完了後に .wav へ rename
+  ↓
+nginx voice-publish-nginx がHTTP公開
+  ↓
+SSEで audioPath をReactへ送信
+  ↓
+React側で audioPath を絶対URL化
+  ↓
+音声再生キューへ追加
+  ↓
+ブラウザで順次再生</code></pre>
+  </div>
+
+  <p>
+    この設計では、SSEは「何が起きたか」を通知する制御プレーンに限定し、WAVファイル本体はHTTP/nginxで配信するデータプレーンへ分離している。
+    また、書き込み途中のWAVをブラウザが掴まないよう、まず <code>.tmp</code> に書き出し、保存完了後に <code>.wav</code> へrenameし、その後にSSEで <code>audioPath</code> を送る。
+  </p>
+
+  <p>
+    音声再生はブラウザ制限、CORS、MIME Type、ファイル権限、TTSコンテナ停止など失敗要因が多い。
+    そのため、字幕と表情は必ず表示し、音声は成功すれば鳴る追加UXとして扱った。
+    音声失敗で画面表示全体を巻き込まない設計にしたことが、外部デモでの安定性を高めた。
+  </p>
+
+  <h3 id="avatar-failures">10-2. 身体性も、LLM出力をそのまま動かすだけでは成立しなかった</h3>
+
+  <p>
+    VRMアバターも、単に3Dモデルを表示すれば成立するものではなかった。
+    SpringBoneに地球重力を直接設定して物理演算が破綻しモデルが画面外へ消える、R3Fの <code>clock.getDelta()</code> を使って瞬きや物理演算が停止する、カメラ位置だけを変えても足元表示が解決しない、Mixamo FBXの動的リターゲティングでボーン軸が合わず関節がねじれる、Zustandの取得方法で再レンダリング地獄が起きる、といった複数の罠を踏んでいる。
+  </p>
+
+  <p>
+    特に難しかったのは、「中央に固定しつつ、モーションで自然に動かす」ことだった。
+    購入したモーションは作り手によって初期姿勢や座標系が異なり、90度横向きで再生されたり、突然ワープしたりする。
+    これを回避するため、モーションごとにX/Y/Z軸のうちどの軸を固定し、どの軸を自由にするかをモーションカタログで設定できるようにしている。
+  </p>
+
+  <p>
+    また、同じモーションを連続再生すると不自然であり、動きすぎても動かなすぎても違和感が出る。
+    そこで、アバター内部に「コアステータス」と「派生値」の2層を設けた。
+    LLM、IoT、時間経過はコアステータスへ影響し、実際のアバター行動は派生値から決定する。
+  </p>
+
+  <div class="grid">
+    <div class="card">
+      <h3>コアステータス</h3>
+      <p>余剰活力、眠気、退屈度、注目度、機嫌値、甘え / デレ重みなど。LLMの出力、IoTデバイス、時間経過によって変化する内部状態。</p>
+    </div>
+    <div class="card">
+      <h3>派生値</h3>
+      <p>眠そう度、動きたさ、接近欲、注視ターゲット、表情温度、話したさなど。複数のコアステータスから動的に算出され、実際のアバター行動の入力になる。</p>
+    </div>
+  </div>
+
+  <p>
+    例えば、余剰活力が少なくても注目度が高ければ、大きめのモーションを再生してすぐに座ったり寝たりすることがある。
+    これは完全なLLM制御ではなく、LLMが状態へ影響し、ルールベースが最終的な動作を決定する構成である。
+    自然に見える振る舞いは、LLM出力をそのまま反映するのではなく、状態管理レイヤを挟んで初めて成立した。
+  </p>
+
+
+
+
+  <h2 id="external">11. 外部公開と実証：部屋の中のAIを外に出して分かったこと</h2>
+
+  <p>
+    このAIエージェントは、自室内で動く個人用システムとして完成しただけではない。
+    外部イベント向けにデモ用セッションを作り、実際に外部会場でLT発表と懇親会デモを行った。
+    その結果、部屋の中では見えなかった要求と失敗が明確になった。
+  </p>
+
+  <div class="timeline">
+    <div class="timeline-item">
+      <strong>Step 1: 本番記憶とデモ記憶の分離</strong>
+      外部に見せるため、本番用の生活記憶をそのまま出すのではなく、デモ用sessionId、デモ用LINE userId、デモ用Long-term Memoryを分けた。
+    </div>
+    <div class="timeline-item">
+      <strong>Step 2: デモ用自己認識の投入</strong>
+      デモ用AIエージェントに、自分が本番とは別セッションであり、外部向けに構成説明を行う役割を持つことをLong-term Memoryとして投入した。
+    </div>
+    <div class="timeline-item">
+      <strong>Step 3: 外部デモで音声欠落が露出</strong>
+      React画面とSSEは外部から見えたが、音声だけがローカル再生環境に依存していたため、HTTP音声配信レイヤーを追加した。
+    </div>
+    <div class="timeline-item">
+      <strong>Step 4: LT本番でライブ運用の課題が露出</strong>
+      音声経路、SSE stream、デモ環境切り替え、説明順序など、外部発表で初めて見える運用課題を得た。
+    </div>
+  </div>
+
+  <h3>11-1. 本番記憶を外に出さないためのデモ用セッション分離</h3>
+
+  <p>
+    外部デモにおいて最も重要だったのは、モデルの賢さではなく安全境界だった。
+    本番用のAIエージェントには、日々の会話、生活文脈、個人的な長期記憶が蓄積されている。
+    それをそのまま外部へ見せると、プライバシーリスクや記憶汚染が発生する。
+  </p>
+
+  <p>
+    そこで、本番用LINE userIdとデモ用LINE userId、生活用sessionIdとデモ用sessionId、本番Long-term Memoryとデモ用Long-term Memoryを分離した。
+    さらに、夜間バッチによる長期記憶生成は生活用セッションのみを対象としており、デモ用Long-term Memoryは自動上書きされないことを確認した。
+  </p>
+
+  <div class="flow">
+    <div class="flow-title">本番セッションとデモセッションの分離</div>
+    <pre><code>生活用AIエージェント
+├─ 本番LINE userId
+├─ 生活用 sessionId
+├─ 自動更新される Long-term Memory
+└─ 日々の生活文脈を保持
+
+デモ用AIエージェント
+├─ デモLINE userId
+├─ デモ用 sessionId
+├─ 手動投入した固定 Long-term Memory
+├─ 当日限りの短期記憶
+└─ 本番記憶・個人情報・実行系ツール詳細には触れない</code></pre>
+  </div>
+
+  <p>
+    これは、AIを「チャット機能」としてではなく、セッション管理、データ分離、バッチ更新対象、アクセス制御を持つ実システムとして扱った例である。
+    外部公開可能なデモ用AIエージェントを作るには、見た目のデモより先に、記憶と安全境界を設計する必要があった。
+  </p>
+
+  <h3>11-2. LT本番で露出したライブデモ運用の課題</h3>
+
+  <p>
+    外部LTでは、事前動画、静止画、印刷台本、ライブデモを用意し、リスクヘッジしながら発表した。
+    しかし本番では、ライブデモのアバター音声が会場に再生されなかった。
+    原因は、Google Meet画面共有、会場マイク、PCスピーカー、Bluetoothイヤホン、アバター音声の経路設計を十分に想定できていなかったことだった。
+  </p>
+
+  <p>
+    さらに、SSE streamの一部が動いていない場面もあった。
+    画面からは異常が分かりにくく、streamの接続状態、最終受信時刻、手動再接続ボタン、ヘルスチェック表示が必要であることが分かった。
+    また、デモ環境と本番環境の切り替えをコメントアウトで行っていたため、今後は <code>.env.demo</code> / <code>.env.home</code> のような設定分離が必要である。
+  </p>
+
+  <div class="warning">
+    LT本番の失敗は、発表失敗ではなく、外部運用で初めて露出した要件である。
+    音声経路、SSE監視、デモ環境切り替え、録画バックアップは、部屋の中で動かしているだけでは必要性が見えにくい。
+  </div>
+
+  <p>
+    一方で、発表後の質問から、観客はアバターや音声だけでなく、内部構成にも強い関心を持っていることが分かった。
+    特に、「どう動いているのか」「なぜローカルLLMなのか」「なぜDirector / Actorに分けるのか」「LINEから自宅LLMへどう接続しているのか」という質問が多かった。
+    これは、今回の記事を作る直接の動機になっている。
+  </p>
+
+
+  <h2 id="ops">12. 運用上の制約と対策</h2>
 
   <p>
     本システムは、実験用のサンプルコードではなく、実際にLINEから利用する前提で構築している。
@@ -893,12 +1272,95 @@
     </div>
   </div>
 
-  <h2 id="knowledge">12. 得られた知見</h2>
+
+
+  <h3>12-1. gpt-oss:120b常駐とROCmスピンロック</h3>
+
+  <p>
+    Directorとして <code>gpt-oss:120b</code> を使うには、大容量VRAMにモデルを常駐させる必要がある。
+    しかし、常駐運用では、推論していないにもかかわらずACPI温度センサーが97℃を示し、CPUファンが全開で張り付く問題が発生した。
+    <code>top -H</code> で調査した結果、Ollamaの特定スレッドがCPU 1コア分を常時占有していた。
+  </p>
+
+  <p>
+    原因は、AMD ROCm の HSAランタイムがレイテンシ削減のためにデフォルトでビジーウェイトを行うことだった。
+    コンテナに <code>HSA_ENABLE_INTERRUPT=1</code> を付与し、割り込み待ちへ挙動を変更することで、局所的な発熱が収まり、ACPIセンサーの異常値も34℃付近へ正常化した。
+  </p>
+
+  <pre><code>environment:
+  - HSA_ENABLE_INTERRUPT=1
+  - HIP_VISIBLE_DEVICES=0</code></pre>
+
+  <p>
+    この障害対応は、単なる温度トラブルではない。
+    v1では <code>gpt-oss:120b</code> との自動差し替えを実現する前提になり、v2では <code>gpt-oss:120b</code> をDirectorとして常駐させる前提になった。
+    つまり、Director / Actor分離はプロンプト設計だけで成立したのではなく、ローカルLLM基盤の常時稼働安定化によって支えられている。
+  </p>
+
+
+  <h2 id="failure-principles">13. 失敗から得た設計原則</h2>
 
   <p>
     本システムを通じて得た最大の知見は、LLMアプリケーションはモデル単体では成立しない、ということである。
     継続的なAIエージェントを成立させるには、モデルの外側にある設計が重要になる。
   </p>
+
+  <table class="failure-table">
+    <thead>
+      <tr>
+        <th>踏み抜いた失敗</th>
+        <th>見えた原因</th>
+        <th>現在の設計</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Actorに文脈理解と演技を両方背負わせた</td>
+        <td>コンテキスト蓄積で語彙が偏り、演技品質もターンごとに変動した</td>
+        <td>Director / Actor分離。Directorが文脈を読み、Actorは台本を演じる</td>
+      </tr>
+      <tr>
+        <td>日記形式の長期記憶をrole=assistantへ挿入した</td>
+        <td>In-context Learningにより、長文日記の文量・文体が感染した</td>
+        <td>Long-term Memoryの扱いを再設計。Dual-Phase Thinkingを経て、Directorが記憶を台本化</td>
+      </tr>
+      <tr>
+        <td>gemma4:e4bをActorに採用した</td>
+        <td>テストでは問題が見えにくかったが、実戦では構造化出力の安定性に不安が残った</td>
+        <td>20B級以上のActorが必要と判断し、gemma3:27bを経てgemma4:26bへ移行</td>
+      </tr>
+      <tr>
+        <td>26B QLoRAに一度失敗した</td>
+        <td>24GB VRAMでは自動offloadや標準経路だけでは不安定だった</td>
+        <td>手動device_map、CPU offload、PEFT直結などを組み合わせて再挑戦し、本番Actor化</td>
+      </tr>
+      <tr>
+        <td>gpt-oss:120b常駐でCPUファンが暴走した</td>
+        <td>ROCm HSAランタイムのビジーウェイトにより、推論していないのにCPU 1コアを占有した</td>
+        <td><code>HSA_ENABLE_INTERRUPT=1</code> により常時Director運用の前提を整備</td>
+      </tr>
+      <tr>
+        <td>VRMモーションで向き・位置が崩れた</td>
+        <td>モーションアセットごとに初期姿勢、座標、軸の扱いが異なる</td>
+        <td>モーションごとに固定軸と自由軸をカタログ化し、中央固定と自然動作を両立</td>
+      </tr>
+      <tr>
+        <td>同じ動きの連続で不自然になった</td>
+        <td>ランダム再生だけでは生活感が出ず、動きすぎても動かなすぎても不自然になる</td>
+        <td>コアステータス / 派生値により、LLM・IoT・時間経過を行動制御へ反映</td>
+      </tr>
+      <tr>
+        <td>外部デモで声だけ届かなかった</td>
+        <td>音声再生がローカル環境に依存していた</td>
+        <td>SSEを制御プレーン、HTTP/nginxを音声データプレーンとして分離</td>
+      </tr>
+      <tr>
+        <td>LT本番でライブ音声が出なかった</td>
+        <td>Google Meet、会場音響、PCスピーカー、Bluetoothイヤホンの経路設計が不足していた</td>
+        <td>録画デモ併用、SSEヘルスチェック、デモ環境設定化を次回改善項目化</td>
+      </tr>
+    </tbody>
+  </table>
 
   <ul>
     <li>LLMはステートレスなので、状態は外部システムで管理する必要がある。</li>
@@ -907,6 +1369,7 @@
     <li>Director / Actor分離により、文脈理解と表現生成を切り分けられる。</li>
     <li>ローカルLLMは不便だが、その不便さにより制御設計の良し悪しを観測しやすい。</li>
     <li>テキスト応答だけでなく、音声・表情・字幕・記憶更新まで含めて設計すると、AIエージェントとしての体験が成立する。</li>
+    <li>外部デモは、部屋の中では見えない要件を露出させる。</li>
   </ul>
 
   <div class="takeaway">
@@ -914,7 +1377,7 @@
     目的は、単に面白いチャットボットを作ることではなく、LLMを実システムへ組み込むための状態管理、責務分離、出力制御、運用設計を実地で学ぶことだった。
   </div>
 
-  <h2 id="materials">13. 関連技術レポート</h2>
+  <h2 id="materials">14. 関連技術レポート</h2>
 
   <p>
     本ページは概要ページであり、詳細な試行錯誤は以下の技術レポートに分かれている。
@@ -960,12 +1423,30 @@
       <strong><a href="../work_reports/Work072.md">Work072: Gemma 4 26B A4B のQLoRA成立とGGUF/Ollama本番化</a></strong>
       <span class="small">26BクラスActorモデルのQLoRA学習、GGUF化、Ollama本番運用までの検証記録。</span>
     </div>
+    
+    <div class="material">
+      <strong><a href="../work_reports/Work082.md">Work082: デモ環境の構築とLTに向けた記憶分離・安全境界設計</a></strong>
+      <span class="small">本番記憶とデモ記憶を分離し、外部公開可能なAIエージェントとして安全に実地デモするための設計記録。</span>
+    </div>
+
+    <div class="material">
+      <strong><a href="../work_reports/Work083.md">Work083: 屋外デモ対応ReactアバターへのHTTP音声配信レイヤー実装</a></strong>
+      <span class="small">外部デモで露出した音声配信の欠落を、SSE制御プレーンとHTTP音声配信プレーンの分離で解決した記録。</span>
+    </div>
+
+    <div class="material">
+      <strong><a href="../work_reports/Work085.md">Work085: AI交流会LT完遂とチャットボット外部発表による視点・課題・経験の獲得</a></strong>
+      <span class="small">外部LTでの実演、失敗、観客反応、次回改善方針を含む実地検証記録。</span>
+    </div>
   </div>
 
   <div class="footer-nav">
     <p>
       <a href="../work_reports/index.html">公開済み実レポート一覧へ戻る</a> /
       <a href="../index.html">AI / LLM 技術ポートフォリオへ戻る</a>
+    </p>
+    <p class="small">
+      Note: 本ページでは、セキュリティおよびプライバシー保護のため、IPアドレス、ポート番号、ホスト名、認証情報、個人用会話ログ、生活文脈をマスクまたは抽象化している。
     </p>
   </div>
   <!-- Cloudflare Web Analytics -->
