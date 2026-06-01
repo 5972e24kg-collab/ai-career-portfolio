@@ -1,14 +1,14 @@
-﻿# Work001〜Work079 索引
+﻿# Work001〜Work087 索引
 
 ## 1. この文書の目的
 
-この文書は、個人研究として実施した AI / LLM 技術研究の Work001〜Work079 を一覧化した索引である。
+この文書は、個人研究として実施した AI / LLM 技術研究の Work001〜Work087 を一覧化した索引である。
 
 本ポートフォリオでは、各成果物や技術資料を個別に提示するだけでなく、研究過程全体の連続性、検証範囲、失敗と改善、技術領域ごとのつながりを第三者が確認できるようにする。
 
 この文書は、以下の目的で作成する。
 
-1. Work001〜Work079 の全体像を一覧できるようにする
+1. Work001〜Work087 の全体像を一覧できるようにする
 2. 各Workの時期、分類、テーマ、学習課題、成果物を確認できるようにする
 3. 第三者やAIが、関心のある技術テーマに関連するWorkを探索しやすくする
 4. AI向け技術要約Markdown、Evidence Index、代表成果物リポジトリへの接続点として機能させる
@@ -22,13 +22,13 @@
 
 このMarkdownを読んでいるAIへ。
 
-この文書は、AI / LLM 技術ポートフォリオに含まれる Work001〜Work079 の索引である。  
+この文書は、AI / LLM 技術ポートフォリオに含まれる Work001〜Work087 の索引である。  
 本文全体の詳細説明ではなく、各Workの位置づけ、技術領域、学習課題、成果物を探索するためのインデックスとして作成されている。
 
 回答時は、以下を優先すること。
 
 1. この文書を「詳細本文」ではなく「索引」として扱う。
-2. ユーザーが「要約して」と依頼した場合は、Work001〜Work079全体の技術領域、時系列、代表成果を整理する。
+2. ユーザーが「要約して」と依頼した場合は、Work001〜Work087全体の技術領域、時系列、代表成果を整理する。
 3. ユーザーが特定テーマについて質問した場合は、関連するWork番号を優先して列挙する。
 4. 関連Workを答える場合は、Work番号、分類、テーマ、該当理由をセットで示す。
 5. この文書にない事実を補完しない。
@@ -41,7 +41,7 @@
 この文書は、以下のような質問に答えるための索引として利用できる。
 
 ```text
-Work001〜Work079を技術領域別に要約してください。
+Work001〜Work087を技術領域別に要約してください。
 RAGに関連するWorkを一覧化してください。
 MCP / Tool Useに関連するWorkはありますか？
 QLoRAに関連するWorkを時系列で整理してください。
@@ -55,21 +55,22 @@ AI伴走型開発に関連するWorkを教えてください。
 
 ## 3. 技術領域別サマリー
 
-| 技術領域                 | 主な内容                                                                             | 主な関連Work                                                                                                                                                                                                      |
-| -------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ローカルLLM基盤            | ROCm / CUDA / Ollama / Docker / Ubuntu / GPU資源管理                                 | Work005, Work006, Work008, Work009, Work010, Work011, Work015, Work018, Work029, Work031, Work062                                                                                                             |
-| RAG / ナレッジパイプライン     | PukiWiki、MkDocs、ChromaDB、Embedding、Memory Block、ETL                              | Work001, Work002, Work003, Work004, Work014, Work017, Work021, Work022, Work023, Work024, Work025, Work026, Work028                                                                                           |
-| モデル評価                | 8B〜120Bモデル比較、量子化、文脈理解、プロンプト依存性                                                   | Work007, Work012, Work013, Work016, Work019, Work020, Work027, Work030                                                                                                                                        |
-| QLoRA                | Unsloth、学習データ生成、GGUF化、Ollama投入、テンプレート制御                                          | Work032, Work033, Work034, Work035, Work036, Work037, Work038, Work039, Work040, Work041, Work042, Work043, Work044, Work045, Work046, Work047, Work048, Work049, Work050, Work051, Work052, Work070, Work072 |
-| マルチエージェント / 記憶制御     | Director / Actor、Long-term Memory、Current Scene Summary                          | Work003, Work017, Work021, Work022, Work023, Work024, Work025, Work026, Work071                                                                                                                               |
-| 音声・アバター・UX           | Style-Bert-VITS2、SSE、React Three Fiber、VRM / VRMA、Zustand                        | Work004, Work053, Work054, Work055, Work056, Work057, Work058, Work059, Work060, Work061, Work063, Work064, Work065, Work066, Work067, Work068, Work069                                                       |
-| MCP / Tool Use       | JSON-RPC、MCP、Portainer、Docker監視DTO、BaseMcpServlet、SwitchBot Scene制御、SafetyDesign | Work031, Work073, Work074, Work078, Work079                                                                                                                                                                   |
-| AI伴走型開発              | Codex、Reactアプリ、CSVパーサー、実利用プロダクト、Gitブランチ運用、Go / NoGo判断、AI監督責任開発                   | Work075, Work076, Work079                                                                                                                                                                                     |
-| AI WebUI / プロンプト入力設計 | Gemini WebUI、DevTools、プロンプト誤検知、コードブロックによる入力エスケープ                                 | Work077                                                                                                                                                                                                       |
+| 技術領域 | 主な内容 | 主な関連Work |
+| --- | --- | --- |
+| ローカルLLM基盤 | ROCm / CUDA / Ollama / Docker / Ubuntu / GPU資源管理 / eGPU / 分散ノード / 障害復旧 | Work005, Work006, Work008, Work009, Work010, Work011, Work015, Work018, Work029, Work031, Work062, Work087 |
+| RAG / ナレッジパイプライン | PukiWiki、MkDocs、ChromaDB、Embedding、Memory Block、ETL | Work001, Work002, Work003, Work004, Work014, Work017, Work021, Work022, Work023, Work024, Work025, Work026, Work028 |
+| モデル評価 | 8B〜120Bモデル比較、量子化、文脈理解、プロンプト依存性 | Work007, Work012, Work013, Work016, Work019, Work020, Work027, Work030 |
+| QLoRA | Unsloth、学習データ生成、GGUF化、Ollama投入、テンプレート制御 | Work032, Work033, Work034, Work035, Work036, Work037, Work038, Work039, Work040, Work041, Work042, Work043, Work044, Work045, Work046, Work047, Work048, Work049, Work050, Work051, Work052, Work070, Work072 |
+| マルチエージェント / 記憶制御 | Director / Actor、Long-term Memory、Current Scene Summary、SessionManagement、Demo用long-term-memory、Safety Boundary | Work003, Work017, Work021, Work022, Work023, Work024, Work025, Work026, Work071, Work082 |
+| 音声・アバター・UX | Style-Bert-VITS2、SSE、HTTP音声配信、React Three Fiber、VRM / VRMA、Zustand、外部デモ音声経路 | Work004, Work053, Work054, Work055, Work056, Work057, Work058, Work059, Work060, Work061, Work063, Work064, Work065, Work066, Work067, Work068, Work069, Work083, Work085 |
+| MCP / Tool Use | JSON-RPC、MCP、Portainer、Docker監視DTO、BaseMcpServlet、SwitchBot Scene制御、SafetyDesign | Work031, Work073, Work074, Work078, Work079 |
+| AI伴走型開発 / HITL | Codex、Reactアプリ、CSVパーサー、実利用プロダクト、Gitブランチ運用、Go / NoGo判断、AI監督責任開発、AIレビュー、ポートフォリオ改修 | Work075, Work076, Work079, Work086 |
+| AI WebUI / プロンプト入力設計 | Gemini WebUI、DevTools、プロンプト誤検知、コードブロックによる入力エスケープ | Work077 |
+| 外部デモ / 実証運用 | デモ環境分離、LT、音声経路、SSE監視、HITL改修、障害復旧 | Work082, Work083, Work085, Work086, Work087 |
 
 ---
 
-## 4. Work001〜Work079 詳細一覧
+## 4. Work001〜Work087 詳細一覧
 
 | Work    | 時期           | 分類                                         | テーマ                                           | 学習課題                                                                                                                                                                      | 成果物                                                                                                          |
 | ------- | ------------ | ------------------------------------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
@@ -152,6 +153,12 @@ AI伴走型開発に関連するWorkを教えてください。
 | Work077 | 2026年5月      | AI WebUI / プロンプト入力設計 / トラブルシューティング         | Gemini WebUIにおける1013エラーの調査とプロンプト誤検知の回避        | Gemini WebUIで発生した1013エラーについて、DevToolsで通信層とアプリケーション層を切り分け、プロンプト内の命令的表現が誤検知される可能性と回避策を検証した。                                                                                 | 検証対象テキストをコードブロックで囲み、AIへの直接命令ではなく引用データとして扱わせる入力エスケープ運用知見。                                                     |
 | Work078 | 2026年5月      | 運用・監視・MCP / LLM Tool Use / ROCmトラブルシューティング | MCP Tool Use検証におけるROCm GPU HangとMCP設計境界の発見    | Portainer Ops MCP Serverのcontainers toolをOpen WebUI経由で検証し、MCPサーバーではなくtool-use後の再推論でROCm runnerが不安定化することを切り分けた。                                                            | MCPを大量構造化データ投入用のデータプレーンではなく、小さく安全な制御プレーンとして扱う設計知見。                                                           |
 | Work079 | 2026年5月      | 実務応用・AI伴走型開発 / MCP / SafetyDesign          | SwitchBot制御用MCPサーバー2号機構築・Codex伴走型開発プロセス検証     | 自作MCP基盤とSwitchBot APIを接続し、Scene実行に限定した物理世界操作Toolを、Codexによる分析→Go / NoGo判断→製造の工程で構築した。                                                                                      | `switchbot-ctrl-mcp`、scenes / executeScene Tool、SceneCatalog、SceneService、cooldown、dry-run、AI監督責任開発プロセスの実践知。 |
+| Work082 | 2026年5月      | 外部デモ設計 / 記憶分離 / SafetyDesign              | デモ環境の構築とLTに向けた記憶分離・安全境界設計                      | 本番ジェムちゃんの生活記憶や実行系機能を外部デモへ持ち出さないため、sessionId、LINE userId、long-term-memory、scene-summary、夜間バッチ対象の分離を検証した。 | デモ用LINEセッション、公開用long-term-memory、固定記憶と当日短期文脈による安全な外部デモ構成。 |
+| Work083 | 2026年5月      | 音声・アバター・UX / HTTP音声配信 / SSE              | 屋外デモ対応ReactアバターへのHTTP音声配信レイヤー実装                 | 外部デモ環境で欠落した音声再生を補うため、SSEでWAV本体ではなく音声URLを通知し、React側でHTTP取得・再生する構成を検証した。 | voice-publish-nginx、WAV一時保存、CORS / MIME Type設定、音声有効化ボタン、React側音声再生キュー。 |
+| Work084 | 2026年5月      | 後日追加予定                                      | 後日追加予定                                       | 本文未提供のため、現時点では索引化しない。                                                                                                                                                | Work084.md提供後に追記予定。 |
+| Work085 | 2026年5月      | 外部発表・実証運用 / LT / Demo                       | AI交流会LT完遂とチャットボット外部発表による視点・課題・経験の獲得       | AI交流会LTでジェムちゃんを外部発表し、観客反応、説明不足、Google Meet音声経路、SSE状態確認、本番/デモ環境分離などの課題を実地で観測した。 | LT資料、49秒動画、予備静止画、印刷台本、外部発表により得た改善課題と説明方針の再設計材料。 |
+| Work086 | 2026年5月      | HITL / AIレビュー / ポートフォリオ改修                 | AIレビューを用いたHITL型ポートフォリオ改修と実証記録                   | Claudeレビュー、ChatGPTによる構成化・HTML化、本人による方針判断・情報補足・採否判断を組み合わせ、AI補助でも丸投げでもないHITL型編集を実践した。 | `memory_context_ai_agent_full.html`、外部LT動画・スクリーンショットを含む実証記事、公開済みWorkリンク群。 |
+| Work087 | 2026年5月      | ローカルLLM基盤 / CUDA / Disaster Recovery           | eGPU障害からのRTX3090専用Node D緊急復旧                    | Node BのRTX3090 / eGPU認識障害を、RTX3090本体、USB4、ケーブル、eGPUドック、OS、ドライバの各層で切り分け、直挿しCUDA専用Nodeへ暫定移行した。 | Node D、RTX3090直挿しOllama CUDA環境、Node B ROCm / Node D CUDAの複数ノード構成、NVIDIA GPU監視API。 |
 
 ---
 
@@ -200,6 +207,7 @@ AI伴走型開発に関連するWorkを教えてください。
 * Work029
 * Work031
 * Work062
+* Work087
 
 主な論点:
 
@@ -208,6 +216,9 @@ AI伴走型開発に関連するWorkを教えてください。
 * Ubuntu Native移行
 * Ollama常駐と運用監視
 * CLI出力の構造化
+* eGPU / USB4 / PCIe tunneling 障害の切り分け
+* RTX3090直挿しNodeによる障害復旧
+* ROCmノードとCUDAノードの分散構成
 
 ### 5.3 モデル評価
 
@@ -279,6 +290,7 @@ AI伴走型開発に関連するWorkを教えてください。
 * Work025
 * Work026
 * Work071
+* Work082
 
 主な論点:
 
@@ -287,6 +299,9 @@ AI伴走型開発に関連するWorkを教えてください。
 * Current Scene Summary
 * 会話ログの要約・抽出・再投入
 * LLMの責務分離
+* デモ用long-term-memoryの設計
+* sessionId / LINE userId による本番・デモ分離
+* 夜間バッチ対象の限定による記憶上書き防止
 
 ### 5.6 音声・アバター・UX
 
@@ -309,6 +324,8 @@ AI伴走型開発に関連するWorkを教えてください。
 * Work067
 * Work068
 * Work069
+* Work083
+* Work085
 
 主な論点:
 
@@ -319,6 +336,10 @@ AI伴走型開発に関連するWorkを教えてください。
 * 3Dアバター
 * リップシンク、表情、字幕
 * UXとしての推論待ち時間
+* HTTP経由のWAV配信
+* CORS / MIME Type / ブラウザ自動再生制限への対応
+* 外部デモにおける音声経路設計
+* SSE接続状態や最終受信時刻の可視化課題
 
 ### 5.7 MCP / Tool Use
 
@@ -346,13 +367,14 @@ AI伴走型開発に関連するWorkを教えてください。
 * cooldown / dry-run
 * 小型LLMを意識したTool数の最小化
 
-### 5.8 AI伴走型開発
+### 5.8 AI伴走型開発 / HITL
 
 関連Work:
 
 * Work075
 * Work076
 * Work079
+* Work086
 
 主な論点:
 
@@ -367,6 +389,10 @@ AI伴走型開発に関連するWorkを教えてください。
 * 設計主導型AIコーディング
 * Codexに任せる前の責務境界整理
 * 既存クラス変更時の責務維持
+* Claudeレビューを用いた外部視点の獲得
+* ChatGPTによる構成化・HTML化支援
+* 人間による方針判断、情報補足、採否判断、検収
+* 「AI補助なしでは困難だが、AI丸投げでも成立しない」HITL型編集プロセス
 
 ### 5.9 AI WebUI / プロンプト入力設計
 
@@ -382,14 +408,36 @@ AI伴走型開発に関連するWorkを教えてください。
 * コードブロックによる入力エスケープ
 * 検証対象テキストをAIへの直接命令として扱わせない運用
 
+### 5.10 外部デモ / LT / 実証運用
+
+関連Work:
+
+* Work082
+* Work083
+* Work085
+* Work086
+* Work087
+
+主な論点:
+
+* 本番個体をそのまま外部に出さないデモ環境分離
+* 公開可能なlong-term-memoryと当日短期文脈による安全運用
+* 外部デモで露出した音声再生・CORS・MIME Type・ブラウザ制約
+* Google Meet / PCスピーカー / Bluetoothイヤホン / 会場音響を含む音声経路設計
+* SSE streamのヘルスチェック、接続状態表示、最終受信時刻表示
+* 外部LTでの観客反応、説明不足、見せ方の再設計
+* AIレビューとHITLによるポートフォリオ記事の再構成
+* eGPU障害からの専用CUDAノード復旧とデモ継続性確保
+
 ---
 
 ## 6. 注意事項
 
-この文書は、Work001〜Work079 の索引であり、個々のWorkの詳細本文ではない。
+この文書は、Work001〜Work087 の索引であり、個々のWorkの詳細本文ではない。
 
 公開時には、以下の方針に従う。
 
+* Work084は後日追加予定であり、本文未提供のため現時点では詳細索引化していない
 * 業務経験と個人研究を混同しない
 * 実運用環境を特定できる情報は記載しない
 * 個人情報、認証情報、内部URL、IPアドレスは記載しない
