@@ -1,0 +1,1235 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>QLoRAでActorを作る - AI / LLM 技術ポートフォリオ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    :root {
+      --text: #222;
+      --muted: #57606a;
+      --border: #d0d7de;
+      --bg-soft: #f6f8fa;
+      --bg-blue: #ddf4ff;
+      --bg-green: #dafbe1;
+      --bg-purple: #fbefff;
+      --bg-yellow: #fff8c5;
+      --blue: #0969da;
+      --green: #1a7f37;
+      --orange: #bc4c00;
+      --red: #cf222e;
+      --purple: #8250df;
+      --dark: #0f172a;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.85;
+      max-width: 1080px;
+      margin: 40px auto;
+      padding: 0 20px 60px;
+      color: var(--text);
+      background: #fff;
+    }
+
+    h1, h2, h3 { line-height: 1.35; }
+    h1 { font-size: 2rem; margin-bottom: 0.3em; letter-spacing: -0.02em; }
+    h2 { margin-top: 2.4em; padding-bottom: 0.25em; border-bottom: 1px solid var(--border); }
+    h3 { margin-top: 1.6em; }
+
+    a { color: var(--blue); text-decoration-thickness: 0.08em; text-underline-offset: 0.16em; }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      background: rgba(175, 184, 193, 0.2);
+      padding: 0.15em 0.35em;
+      border-radius: 6px;
+      font-size: 0.95em;
+    }
+
+    pre {
+      background: #f6f8fa;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      line-height: 1.55;
+      margin: 18px 0;
+    }
+
+    pre code { background: transparent; padding: 0; border-radius: 0; }
+
+    table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 0.96rem; }
+    th, td { border: 1px solid var(--border); padding: 10px 12px; vertical-align: top; }
+    th { background: var(--bg-soft); text-align: left; }
+
+    .subtitle { color: var(--muted); font-size: 1.1rem; margin-top: 0; }
+    .meta { color: var(--muted); font-size: 0.95rem; margin: 20px 0 28px; }
+
+    .lead {
+      background: var(--bg-soft);
+      border-left: 5px solid var(--blue);
+      padding: 18px 20px;
+      margin: 24px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .note {
+      background: var(--bg-soft);
+      border-left: 4px solid var(--muted);
+      padding: 12px 16px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .warning {
+      background: var(--bg-yellow);
+      border-left: 4px solid #9a6700;
+      padding: 12px 16px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .highlight {
+      background: var(--bg-blue);
+      border-left: 4px solid var(--blue);
+      padding: 14px 16px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .takeaway {
+      background: var(--bg-green);
+      border-left: 4px solid var(--green);
+      padding: 14px 16px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .toc {
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 28px 0;
+    }
+
+    .toc ol { margin: 0; padding-left: 1.4em; }
+    .toc li { margin: 4px 0; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin: 20px 0; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 20px 0; }
+
+    .card { border: 1px solid var(--border); border-radius: 12px; padding: 16px; background: #fff; }
+    .card h3 { margin-top: 0; margin-bottom: 8px; }
+    .card p { margin-bottom: 0; }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-right: 6px;
+      margin-bottom: 6px;
+      background: var(--bg-soft);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    .badge-core { color: var(--blue); border-color: rgba(9, 105, 218, 0.35); background: rgba(9, 105, 218, 0.10); }
+    .badge-memory { color: var(--green); border-color: rgba(26, 127, 55, 0.35); background: rgba(46, 160, 67, 0.10); }
+    .badge-output { color: var(--purple); border-color: rgba(130, 80, 223, 0.35); background: rgba(130, 80, 223, 0.10); }
+    .badge-risk { color: var(--orange); border-color: rgba(188, 76, 0, 0.35); background: rgba(251, 143, 68, 0.12); }
+
+    .comparison { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin: 20px 0; }
+    .comparison .box { border: 1px solid var(--border); border-radius: 12px; padding: 16px; background: #fff; }
+    .comparison .box h3 { margin-top: 0; }
+
+    .flow {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      margin: 22px 0;
+      background: linear-gradient(180deg, #ffffff 0%, #f6f8fa 100%);
+    }
+
+    .flow-title { font-weight: 700; margin-bottom: 12px; }
+    .flow pre { margin: 0; background: #fff; }
+
+    .step {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.8em;
+      height: 1.8em;
+      border-radius: 999px;
+      background: var(--dark);
+      color: #fff;
+      font-size: 0.85em;
+      font-weight: 700;
+      margin-right: 8px;
+    }
+
+    .materials { display: grid; gap: 12px; margin: 18px 0; }
+    .material { border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; background: #fff; }
+    .material strong { display: block; margin-bottom: 4px; }
+    .small { color: var(--muted); font-size: 0.95em; }
+
+    .timeline { border-left: 3px solid var(--border); margin: 20px 0 20px 8px; padding-left: 18px; }
+    .timeline-item { margin: 0 0 18px; position: relative; }
+    .timeline-item::before {
+      content: "";
+      position: absolute;
+      left: -28px;
+      top: 0.65em;
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      background: var(--blue);
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 1px var(--border);
+    }
+    .timeline-item strong { display: block; margin-bottom: 4px; }
+
+    .failure-table th:nth-child(1) { width: 26%; }
+    .failure-table th:nth-child(2) { width: 34%; }
+    .failure-table th:nth-child(3) { width: 40%; }
+
+    /* QLoRA Article Diagram Components */
+    .diagram-figure {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      margin: 28px 0;
+      background: linear-gradient(180deg, #ffffff 0%, #f6f8fa 100%);
+    }
+
+    .diagram-figure h3 { margin-top: 0; margin-bottom: 6px; }
+    .diagram-caption { color: var(--muted); font-size: 0.95rem; margin: 8px 0 16px; }
+    .diagram-grid { display: grid; gap: 14px; margin: 18px 0; }
+    .diagram-grid-3 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+
+    .diagram-card { border: 1px solid var(--border); border-radius: 12px; background: #fff; padding: 14px 16px; }
+    .diagram-card h4 { margin: 0 0 8px; font-size: 1rem; }
+    .diagram-card p { margin: 0; }
+    .diagram-small { color: var(--muted); font-size: 0.92rem; }
+
+    .diagram-equation {
+      display: inline-block;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 4px 10px;
+      margin: 6px 0;
+      font-size: 0.95rem;
+    }
+
+    .diagram-badge {
+      display: inline-block;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg-soft);
+      color: var(--muted);
+      margin: 0 4px 6px 0;
+      white-space: nowrap;
+    }
+
+    .diagram-badge-frozen { color: var(--blue); border-color: rgba(9, 105, 218, 0.35); background: rgba(9, 105, 218, 0.10); }
+    .diagram-badge-trainable { color: var(--green); border-color: rgba(26, 127, 55, 0.35); background: rgba(46, 160, 67, 0.10); }
+    .diagram-badge-warning { color: var(--orange); border-color: rgba(188, 76, 0, 0.35); background: rgba(251, 143, 68, 0.12); }
+    .diagram-badge-danger { color: var(--red); border-color: rgba(207, 34, 46, 0.35); background: rgba(207, 34, 46, 0.10); }
+
+    .weight-box { border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin: 10px 0; background: var(--bg-soft); }
+    .weight-box strong { display: block; margin-bottom: 4px; }
+    .weight-box-frozen { border-left: 4px solid var(--blue); }
+    .weight-box-trainable { border-left: 4px solid var(--green); }
+    .weight-box-merged { border-left: 4px solid var(--purple); }
+
+    .module-tree {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+      padding: 14px 16px;
+      margin: 14px 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 0.92rem;
+      line-height: 1.7;
+      overflow-x: auto;
+    }
+
+    .module-line {
+      display: grid;
+      grid-template-columns: minmax(260px, 1.4fr) minmax(170px, 0.9fr) minmax(180px, 1fr);
+      gap: 10px;
+      align-items: start;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(208, 215, 222, 0.65);
+    }
+    .module-line:last-child { border-bottom: none; }
+    .module-path { color: var(--dark); word-break: break-all; }
+    .module-type { color: var(--muted); }
+    .module-result-good { color: var(--green); font-weight: 700; }
+    .module-result-bad { color: var(--red); font-weight: 700; }
+    .module-result-warn { color: var(--orange); font-weight: 700; }
+
+    .diagram-note-box { background: var(--bg-blue); border-left: 4px solid var(--blue); border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 16px 0 0; }
+    .diagram-warning-box { background: var(--bg-yellow); border-left: 4px solid #9a6700; border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 16px 0 0; }
+
+    .footer-nav { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border); }
+
+    @media (max-width: 760px) {
+      .module-line { grid-template-columns: 1fr; gap: 2px; padding: 10px 0; }
+      .diagram-figure { padding: 14px; }
+    }
+
+    @media (max-width: 640px) {
+      body { margin-top: 24px; padding-left: 16px; padding-right: 16px; }
+      h1 { font-size: 1.65rem; }
+      .lead, .toc, .card, .flow, .diagram-figure { border-radius: 10px; }
+    }
+  </style>
+</head>
+
+<body>
+  <h1>QLoRAでActorを作る</h1>
+  <p class="subtitle">ローカルLLMの学習・merge・GGUF化・運用で理解したこと</p>
+
+  <p class="meta">
+    Tag:
+    <span class="badge badge-core">LLM</span>
+    <span class="badge badge-core">QLoRA</span>
+    <span class="badge badge-core">Actor Model</span>
+    <span class="badge badge-core">Fine-Tuning</span>
+    <span class="badge-memory">LoRA Adapter</span>
+    <span class="badge-memory">PEFT</span>
+    <span class="badge-memory">bitsandbytes</span>
+    <span class="badge-output">GGUF</span>
+    <span class="badge-output">Ollama</span>
+    <span class="badge-output">Unsloth</span>
+    <span class="badge-risk">Failure Analysis</span>
+    <span class="badge-risk">System Design</span>
+  </p>
+
+  <div class="lead">
+    <strong>このページの主題:</strong><br>
+    本ページは「QLoRAを実行したら成功した」という手順メモではありません。
+    自作AIエージェントのActorをローカルLLMで成立させるために、Llama 3.1 8BからGemma 4 31Bまでの7世代、
+    RTX3060、RTX3090、GIGABYTE AI TOP ATOM / GB10という複数の実行環境を跨いで失敗を踏み、
+    その過程で <strong>QLoRAがLLMスタックのどこに効くのか</strong> を理解していった技術記録です。
+  </div>
+
+  <div class="highlight">
+    本ページでは、完成したモデルだけではなく、そこに至るまでの失敗も記録します。
+    テンプレート不整合、EOS喪失、過学習による語彙崩壊、Gemma 4特有の <code>Gemma4ClippableLinear</code> 問題、
+    26Bの撤退と再挑戦、merge / GGUF化 / Ollama登録の詰まり。
+    それらの失敗が、現在のActor設計とQLoRA理解へ収束した理由です。
+  </div>
+
+  <div class="note">
+    本記事では、キャラクター性をエンターテイメント要素としてではなく、<strong>応答スタイルを安定再現するための評価対象・設計要件</strong>として扱います。
+    「ジェムちゃん」という固有名は残しますが、主題はローカルLLM Actorを実運用に載せるための学習・変換・運用設計です。
+  </div>
+
+  <div class="toc">
+    <strong>目次</strong>
+    <ol>
+      <li><a href="#intro">はじめに：これはQLoRA成功手順の清書ではない</a></li>
+      <li><a href="#actor">なぜActorにQLoRAが必要だったのか</a></li>
+      <li><a href="#layers">QLoRAの位置づけ：頭脳・記憶・性格・化粧</a></li>
+      <li><a href="#data">学習素材は書いた：100話の小説とデータ設計</a></li>
+      <li><a href="#timeline">7世代・3ハードの変遷</a></li>
+      <li><a href="#pipeline">QLoRA作業の実体：3段階パイプライン</a></li>
+      <li><a href="#template">壁①：テンプレート・EOS・データバイアス</a></li>
+      <li><a href="#clippable">壁②：Gemma4ClippableLinear問題</a></li>
+      <li><a href="#convert">壁③：merge / GGUF / Ollama登録</a></li>
+      <li><a href="#valley">26B撤退と再挑戦、31Bでつながった理解</a></li>
+      <li><a href="#effect">QLoRAは何を変えたのか</a></li>
+      <li><a href="#failures">失敗から得た設計原則</a></li>
+      <li><a href="#handoff">次世代モデルへの申し送り</a></li>
+      <li><a href="#materials">関連技術レポート</a></li>
+    </ol>
+  </div>
+
+  <h2 id="intro">1. はじめに：これはQLoRA成功手順の清書ではない</h2>
+
+  <p>
+    多くのQLoRA記事は、成功した手順を整理した再現メモとして書かれます。
+    それ自体には価値がありますが、私が今回残したいのは、成功手順そのものではありません。
+    私が知りたかったのは、<strong>なぜその工程が必要なのか</strong>、そして <strong>QLoRAはLLMアプリケーション全体のどの層に効いているのか</strong> でした。
+  </p>
+
+  <p>
+    私のLLM研究は、モデルベンチマーク、RAG / ETLパイプライン、MCP / tool use、AI伴走開発、
+    Director / Actor構成のマルチエージェント、記憶と文脈を維持するAIエージェントへ広がっています。
+    その中でQLoRAは、単なる追加学習ではなく、モデル構造、データ設計、GPUメモリ、テンプレート、変換、量子化、
+    本番運用までを横断する大きな学習テーマでした。
+  </p>
+
+  <p>
+    8Bや4Bでは、学習は比較的素直に通りました。
+    しかし、12B、27B、26B、31Bへ進むにつれて、失敗の場所は毎回変わりました。
+    VRAM、テンプレート、EOS、過学習、GGUF変換、Ollama登録、そしてGemma 4のマルチモーダル構造。
+    それらを一つずつ踏んだことで、ようやくQLoRAを「コマンドを打つ作業」ではなく、
+    <strong>どの重みに、どの差分を、どの工程で足すのかを制御する技術</strong>として理解できるようになりました。
+  </p>
+
+  <div class="takeaway">
+    本記事の目的は、QLoRAの万能性を示すことではありません。
+    むしろ、QLoRAが変えられる範囲と、変えられない範囲を切り分け、ローカルLLM Actorを実運用に持ち込むための設計原則として整理することです。
+  </div>
+
+  <h2 id="actor">2. なぜActorにQLoRAが必要だったのか</h2>
+
+  <p>
+    私のAIエージェントは、Director / Actor構成を採用しています。
+    Directorは、会話履歴、短期記憶、長期記憶、現在の文脈を読み、「何を言うべきか」を整理します。
+    Actorは、その台本を受け取り、ユーザーに見える最終応答として「どう言うか」を担当します。
+  </p>
+
+  <div class="comparison">
+    <div class="box">
+      <h3>Director</h3>
+      <p>
+        大規模モデルを用いて、文脈解釈、目的整理、話題選定、禁止事項、応答方針を決める。
+        役割は「何を言うか」を設計すること。
+      </p>
+    </div>
+    <div class="box">
+      <h3>Actor</h3>
+      <p>
+        Directorの台本を受け取り、最終的な応答文、語彙、温度感、口調、構造化出力を生成する。
+        役割は「どう言うか」を演じること。
+      </p>
+    </div>
+  </div>
+
+  <p>
+    ここで問題になるのが、Actorの出力スタイルです。
+    システムプロンプトだけでも、ある程度の人格・口調・制約は作れます。
+    実際、私は大型モデルに詳細なシステムプロンプトを与えるだけで、70点程度のジェムちゃんを作れることを確認しました。
+    しかし、応答の語彙選択、短い返答の自然さ、技術用語を日常比喩として使う癖、呼称や間の取り方は、
+    プロンプトだけでは最後まで安定しませんでした。
+  </p>
+
+  <p>
+    そこでQLoRAを、Actorの最後の1マイルとして使いました。
+    キャラクター性は、この記事ではエンターテイメントではありません。
+    <strong>応答スタイルが安定して再現されているかを観測しやすい評価対象</strong>です。
+    出力が崩れればすぐ分かる。語彙が寄りすぎればすぐ分かる。テンプレートが壊れれば会話が止まる。
+    その意味で、ジェムちゃんはQLoRAの成否を観測するための、非常に厳しいActor要件でした。
+  </p>
+
+  <h2 id="layers">3. QLoRAの位置づけ：頭脳・記憶・性格・化粧</h2>
+
+  <p>
+    失敗を重ねた結果、QLoRAの位置づけは次の4層モデルに落ち着きました。
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>層</th>
+        <th>担当する技術</th>
+        <th>役割</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>頭脳</strong></td>
+        <td>ベースモデル本体</td>
+        <td>知識、推論能力、言語理解、基礎的な表現力。</td>
+      </tr>
+      <tr>
+        <td><strong>記憶</strong></td>
+        <td>会話履歴、RAG、短期記憶、長期記憶</td>
+        <td>現在の話題、関係性、直近の文脈、過去から続く情報。</td>
+      </tr>
+      <tr>
+        <td><strong>性格</strong></td>
+        <td>システムプロンプト、Director台本、出力制約</td>
+        <td>基本的な態度、役割、禁止事項、応答形式。</td>
+      </tr>
+      <tr>
+        <td><strong>化粧</strong></td>
+        <td>QLoRA / LoRA Adapter</td>
+        <td>固有の語彙選択、言い回し、温度感、Actorとしての癖。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>
+    QLoRAは、モデルをゼロから別人格へ作り替える魔法ではありません。
+    頭脳はベースモデルが持っています。記憶は外部コンテキストが担います。性格の大枠はシステムプロンプトでかなり作れます。
+    QLoRAが担うのは、その上に薄く乗る「Actorとしての寄せ方」です。
+  </p>
+
+  <div class="highlight">
+    正確には、学習中に元の重み <code>W</code> を直接書き換えるのではなく、凍結した <code>W</code> の横に低ランクの差分 <code>ΔW</code> を学習し、
+    merge時に <code>W' = W + ΔW</code> として畳み込みます。
+    その結果、推論時の分布が少しだけ補正され、特定の語彙や表現が選ばれやすい方向へ寄ります。
+  </div>
+
+  <p>
+    私が最初に誤解していたのは、QLoRAがTransformer本体を直接書き換えているという点でした。
+    実際には、4bit量子化されたLinear層は凍結され、その横に学習可能な小さな差分アダプターを作ります。
+    この「なぜアダプターが必要なのか」を理解できたことが、最も大きな収穫でした。
+  </p>
+
+  <h2 id="data">4. 学習素材は書いた：100話の小説とデータ設計</h2>
+
+  <p>
+    QLoRAには学習データが必要です。
+    私は、Actorとして再現したいジェムちゃんのスタイルを定義するため、自作小説を約100話分書きました。
+    これは趣味の創作というより、<strong>何を正解データとするかを自分で定義するためのデータ設計</strong>でした。
+  </p>
+
+  <p>
+    小説の内容は、実際のLLM検証ログや自宅AI基盤構築の作業をもとにしたものでした。
+    つまり構造としては、実際のWorkログとチャットログを小説化し、その小説を学習データへ変換し、
+    その学習データからActorの語彙と応答傾向を作る流れです。
+  </p>
+
+  <div class="flow">
+    <div class="flow-title">学習データ生成の大まかな流れ</div>
+    <pre><code>実際のWorkログ・検証記録
+  ↓
+小説化されたキャラクターと技術文脈
+  ↓
+gpt-oss:120b などによるQ&A抽出・整形
+  ↓
+Unsloth / PEFT向けデータセット
+  ↓
+QLoRA学習
+  ↓
+Actorの語彙・応答傾向へ反映</code></pre>
+  </div>
+
+  <p>
+    ただし、データは多ければよいわけではありませんでした。
+    730件規模で回したときには、語彙の偏りや過学習による「泥酔現象」が発生しました。
+    その後、日常会話、技術会話、論理問題、短い応答、抑制的なデレなどを混ぜ、
+    <strong>素材の量ではなく、ベースモデルが持つ出荷時バイアスをどう補正するか</strong>としてデータ配合を見るようになりました。
+  </p>
+
+  <p>
+    実際に730件規模で学習したときの出力が、これです。二人称「貴方」の頻度が突出していたため、Attentionがそのトークンへ過剰に集中し、自己回帰的に同じ語を吐き続けるループへ陥りました。
+  </p>
+
+  <pre><code># プロンプト: 今回の実装、君のおかげですごく上手くいったよ。ありがとう！
+# 回答:
+貴方の貴方（ノード）が、私が生成したコードと完璧なタイミングでシンクロした
+だけよ。貴方が貴方の実装（実装）プロセスを貴方（貴方の）手で管理した結果よ。
+貴方の（貴方の）システムが、貴方の（貴方の）貴方の（貴方の）システムよ。
+貴方の貴方の貴方の（貴方の）システムで……（以下ループ）</code></pre>
+
+  <p>
+    これ以降は、いきなり全件を回すのをやめ、10件→50件→100件と段階的にスケールしながら崩壊の有無を確認するようにしました。
+    最終的には、通常会話・ツン・デレをおよそ <strong>270 : 170 : 150</strong>（ツンを厚く、デレを薄く）で配合し、過学習の閾値の手前へ件数を抑えています。
+  </p>
+
+  <div class="takeaway">
+    Actor用QLoRAのデータ設計は、単にキャラクターらしい台詞を集める作業ではありません。
+    ベースモデルが元々持っている安全寄り・親切寄り・長文寄りの傾向を読み、必要な方向へわずかに補正する作業でした。
+  </div>
+
+  <h2 id="timeline">5. 7世代・3ハードの変遷</h2>
+
+  <p>
+    ここまでの挑戦を、モデル世代とハードウェアごとに整理します。
+    重要なのは、失敗の場所が毎回同じではなかったことです。
+    モデルサイズが上がるたびにVRAMの壁が現れ、世代が変わるたびにテンプレートや内部構造の壁が現れました。
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>世代</th>
+        <th>モデル</th>
+        <th>主なハード</th>
+        <th>主な壁</th>
+        <th>結果・理解</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>Llama 3.1 8B</td>
+        <td>RTX3060 12GB</td>
+        <td>大きな壁は少ない</td>
+        <td>QLoRAの最初の成功。Tech-Tsundere的な語彙寄せを確認。</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>Gemma 3 4B</td>
+        <td>RTX3060級</td>
+        <td>小型ゆえに通りやすい</td>
+        <td>小型モデルでは工程そのものは比較的素直に通ると理解。</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>Gemma 3 12B</td>
+        <td>RTX3060 12GB</td>
+        <td>VRAM枯渇、テンプレート不整合</td>
+        <td>batch sizeやgradient accumulationでメモリを抑え、Gemma専用テンプレートの重要性を確認。</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>Gemma 3 27B</td>
+        <td>RTX3090 24GB</td>
+        <td>泥酔現象、GGUF変換、merge</td>
+        <td>27B Actorが成立。テンプレート/EOSと変換工程の重要性を学ぶ。</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td>Gemma 4 E4B</td>
+        <td>RTX3090 24GB</td>
+        <td><code>Gemma4ClippableLinear</code> 初遭遇</td>
+        <td>text-only化、除外、クラス差し替えなど、Gemma 4世代の新しさに初めて対応。</td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td>Gemma 4 26B</td>
+        <td>RTX3090 24GB</td>
+        <td>OOM、Unsloth未対応、手動offload</td>
+        <td>一度撤退後、手動device_map、CPU offload、PEFT直結で本番Actor化。</td>
+      </tr>
+      <tr>
+        <td>7</td>
+        <td>Gemma 4 31B</td>
+        <td>GIGABYTE AI TOP ATOM / GB10</td>
+        <td><code>Gemma4ClippableLinear</code> 再会、tokenizer、Docker/NVML</td>
+        <td>型・名前・完全名regexでLoRA対象を制御し、QLoRAの意味を理解し直した。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="pipeline">6. QLoRA作業の実体：3段階パイプライン</h2>
+
+  <p>
+    QLoRAを理解するうえで最も重要だったのは、工程を「学習」だけで見ないことでした。
+    実運用に載せるには、LoRAアダプターを作り、ベースモデルへmergeし、GGUF化し、再量子化し、Ollamaへ登録する必要があります。
+  </p>
+
+  <figure class="diagram-figure" id="fig-qlora-pipeline">
+    <h3>図1：QLoRA 3段階パイプライン</h3>
+    <p class="diagram-caption">
+      QLoRAは、量子化済みモデルの重みを直接書き換える作業ではない。
+      凍結された <code>Linear4bit</code> の横にLoRAアダプターを作り、後段でbf16へ戻したベースモデルにmergeし、最後にGGUF化・再量子化して実運用へ載せる。
+    </p>
+
+    <div class="diagram-grid diagram-grid-3">
+      <div class="diagram-card">
+        <h4><span class="step">1</span>QLoRA学習</h4>
+        <span class="diagram-badge diagram-badge-frozen">Base: frozen</span>
+        <span class="diagram-badge diagram-badge-trainable">Adapter: trainable</span>
+
+        <div class="weight-box weight-box-frozen">
+          <strong>Base Model 4bit</strong>
+          <code>Linear4bit</code><br>
+          <span class="diagram-small">元の重み <code>W</code> は凍結。学習中に直接書き換えない。</span>
+        </div>
+
+        <div class="weight-box weight-box-trainable">
+          <strong>LoRA Adapter</strong>
+          <code>ΔW = A × B</code><br>
+          <span class="diagram-small">学習データに合わせて更新される小さな差分。</span>
+        </div>
+
+        <p class="diagram-small">
+          学習で作られるのは「完成済みモデル」ではなく、元モデルへ足すための差分アダプターである。
+        </p>
+      </div>
+
+      <div class="diagram-card">
+        <h4><span class="step">2</span>bf16でmerge</h4>
+        <span class="diagram-badge diagram-badge-warning">precision restore</span>
+        <span class="diagram-badge diagram-badge-trainable">merge</span>
+
+        <div class="weight-box weight-box-frozen">
+          <strong>Base Model bf16</strong>
+          <span class="diagram-small">4bitのまま畳み込まず、精度を戻したベースモデルを読み直す。</span>
+        </div>
+
+        <div class="diagram-equation">W' = W + ΔW</div>
+
+        <div class="weight-box weight-box-merged">
+          <strong>Merged HF Model</strong>
+          <span class="diagram-small">LoRAアダプター差分を畳み込んだ統合済みモデル。</span>
+        </div>
+
+        <p class="diagram-small">
+          bf16へ戻してからmergeすることで、4bit状態での無理な統合による劣化を避ける。
+        </p>
+      </div>
+
+      <div class="diagram-card">
+        <h4><span class="step">3</span>GGUF化・運用</h4>
+        <span class="diagram-badge diagram-badge-trainable">GGUF</span>
+        <span class="diagram-badge diagram-badge-warning">Q4_K_M</span>
+        <span class="diagram-badge">Ollama</span>
+
+        <div class="weight-box">
+          <strong>GGUF変換</strong>
+          <span class="diagram-small">llama.cpp / Ollamaで扱いやすい形式へ変換する。</span>
+        </div>
+
+        <div class="weight-box">
+          <strong>Q4量子化</strong>
+          <span class="diagram-small">推論用に再量子化し、サイズと速度を実運用向けへ寄せる。</span>
+        </div>
+
+        <div class="weight-box">
+          <strong>Actor本番運用</strong>
+          <span class="diagram-small">Modelfile / SYSTEM / TEMPLATEを設定し、Directorから渡された台本を応答へ変換する。</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="flow">
+      <div class="flow-title">工程全体の流れ</div>
+      <pre><code>学習データ
+  ↓
+Unsloth / PEFT / bitsandbytes
+  ↓
+LoRA Adapter 作成
+  ↓
+Base Model bf16 + Adapter を merge
+  ↓
+Merged HF Model
+  ↓
+GGUF 変換
+  ↓
+Q4_K_M 量子化
+  ↓
+Ollama 登録
+  ↓
+Actor 本番運用</code></pre>
+    </div>
+
+    <div class="diagram-note-box">
+      <strong>この図での要点:</strong><br>
+      QLoRAは、凍結された巨大な重み <code>W</code> を直接書き換えるのではなく、
+      横に小さな差分 <code>ΔW</code> を学習する。
+      そして実運用前に <code>W' = W + ΔW</code> としてmergeし、GGUF化・再量子化してActorとして使える形にする。
+    </div>
+  </figure>
+
+  <h2 id="template">7. 壁①：テンプレート・EOS・データバイアス</h2>
+
+  <p>
+    学習が通っても、推論でActorとして使えるとは限りません。
+    Gemma系では、学習時と推論時のチャットテンプレートがずれると、EOSを見失い、無言になったり、無限に出力し続けたりします。
+    私はこれを、酔ったように語彙が崩れる「泥酔現象」として観測しました。
+  </p>
+
+  <p>
+    この問題は、単にデータ件数を増やせば解決するものではありませんでした。
+    むしろ、偏ったデータを増やすほど、特定語彙や特定トーンが強まり、日常会話では不自然になりました。
+    Actor用途では、学習データは「濃いキャラクター台詞」だけでは不十分です。
+    雑談、短文応答、技術説明、論理問題、控えめな感情表現を混ぜ、人格が剥がれやすい場面にも薄く効かせる必要がありました。
+  </p>
+
+  <div class="flow">
+    <div class="flow-title">テンプレート不整合で起きたこと</div>
+    <pre><code>学習時テンプレート
+  ↓
+推論時テンプレートと不一致
+  ↓
+EOS / turn境界をモデルが見失う
+  ↓
+無言・長文化・ループ・語彙崩壊
+  ↓
+Actorとしては実用不能</code></pre>
+  </div>
+
+  <div class="takeaway">
+    学習成功と推論成功は別工程です。
+    Actorに必要なのは「学習が完走したモデル」ではなく、テンプレート、EOS、出力長、停止条件まで含めて安定したモデルです。
+  </div>
+
+  <h2 id="clippable">8. 壁②：Gemma4ClippableLinear問題</h2>
+
+  <p>
+    Gemma 4世代で初めて正面から理解したのが、<code>Gemma4ClippableLinear</code> 問題です。
+    Gemma 4はマルチモーダル構造を持つため、text backboneだけでなく、vision_towerやprojectorなども内部に持ちます。
+    そこで単純に <code>q_proj</code>、<code>k_proj</code>、<code>v_proj</code> のような名前でLoRA対象を指定すると、
+    テキスト側だけでなく、vision側の同名モジュールまで巻き込みます。
+  </p>
+
+  <figure class="diagram-figure" id="fig-gemma4-clippable-linear">
+    <h3>図2：Gemma4ClippableLinear問題の模式図</h3>
+    <p class="diagram-caption">
+      Gemma 4はマルチモーダル構造を持つため、単純に <code>q_proj</code> などのsuffixでLoRA対象を指定すると、
+      text backboneだけでなく <code>vision_tower</code> 側の同名モジュールまで巻き込む。
+      さらに、型フィルタだけでは <code>Gemma4ClippableLinear</code> の内側にある <code>Linear4bit</code> が残るため、名前による除外も必要になる。
+    </p>
+
+    <div class="diagram-grid">
+      <div class="diagram-card">
+        <h4>Gemma 4内部の対象候補</h4>
+
+        <div class="module-tree">
+          <div class="module-line">
+            <div class="module-path">language_model...q_proj</div>
+            <div class="module-type">型: Linear4bit</div>
+            <div class="module-result-good">対象にしたい</div>
+          </div>
+          <div class="module-line">
+            <div class="module-path">language_model...k_proj</div>
+            <div class="module-type">型: Linear4bit</div>
+            <div class="module-result-good">対象にしたい</div>
+          </div>
+          <div class="module-line">
+            <div class="module-path">language_model...v_proj</div>
+            <div class="module-type">型: Linear4bit</div>
+            <div class="module-result-good">対象にしたい</div>
+          </div>
+          <div class="module-line">
+            <div class="module-path">model.vision_tower...q_proj</div>
+            <div class="module-type">型: Gemma4ClippableLinear</div>
+            <div class="module-result-bad">型フィルタで除外</div>
+          </div>
+          <div class="module-line">
+            <div class="module-path">model.vision_tower...q_proj.linear</div>
+            <div class="module-type">型: Linear4bit</div>
+            <div class="module-result-warn">型だけなら通過</div>
+          </div>
+          <div class="module-line">
+            <div class="module-path">multi_modal / projector / image...</div>
+            <div class="module-type">型: 各種bridge層</div>
+            <div class="module-result-bad">Actor用途では除外</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="diagram-card">
+        <h4>失敗した指定：suffix一致</h4>
+        <pre><code>target_modules = [
+  "q_proj",
+  "k_proj",
+  "v_proj",
+  "o_proj",
+  "gate_proj",
+  "up_proj",
+  "down_proj",
+]</code></pre>
+
+        <div class="diagram-warning-box">
+          <strong>問題:</strong><br>
+          <code>language_model...q_proj</code> も
+          <code>model.vision_tower...q_proj</code> も、末尾は同じ <code>q_proj</code>。
+          そのため、text backboneだけでなくvision側までLoRA対象に入ってしまう。
+        </div>
+      </div>
+
+      <div class="diagram-card">
+        <h4>型フィルタだけでは足りない理由</h4>
+        <div class="module-tree">
+          <div class="module-line">
+            <div class="module-path">model.vision_tower...q_proj</div>
+            <div class="module-type">Gemma4ClippableLinear</div>
+            <div class="module-result-bad">除外できる</div>
+          </div>
+          <div class="module-line">
+            <div class="module-path">model.vision_tower...q_proj.linear</div>
+            <div class="module-type">Linear4bit</div>
+            <div class="module-result-warn">型だけなら残る</div>
+          </div>
+        </div>
+
+        <p class="diagram-small">
+          <code>Gemma4ClippableLinear</code> はラッパーであり、その内側に
+          <code>Linear4bit</code> が存在する。
+          したがって、<code>torch.nn.Linear</code> / <code>bitsandbytes.nn.Linear4bit</code>
+          だけを通す型フィルタでは、vision側の内側のLinearまで拾う可能性がある。
+        </p>
+      </div>
+    </div>
+
+    <div class="flow">
+      <div class="flow-title">改善後の対象抽出</div>
+      <pre><code>1. model.named_modules() で全モジュールを走査する
+
+2. PEFTが扱える型だけに絞る
+   - torch.nn.Linear
+   - bitsandbytes.nn.Linear4bit
+
+3. テキストActor用途では不要な名前を除外する
+   - vision
+   - audio
+   - projector
+   - multi_modal
+   - multimodal
+   - image
+   - mm_
+   - clip
+
+4. 残った完全モジュール名だけをregex化する
+
+5. PEFTへ完全名regexとして渡す
+   - suffix一致ではなく、狙ったtext backbone側だけにLoRAを刺す</code></pre>
+    </div>
+
+    <div class="diagram-note-box">
+      <strong>この図での要点:</strong><br>
+      Gemma4ClippableLinear問題は、単なるPEFTエラーではない。
+      QLoRAで重要なのは、<code>q_proj</code> という名前だけを見ることではなく、
+      その層が <strong>どのサブシステムに属し、Actor用途で本当に曲げたい重みなのか</strong> を判断することだった。
+    </div>
+  </figure>
+
+  <p>
+    この問題は、E4B、26B、31Bで形を変えて現れました。
+    E4Bでは除外とクラス差し替えで突破し、26Bでは手動offloadによって結果的にtext側だけがLoRA対象として残りました。
+    31Bではunified memoryによって全体が素直に載ったため、逆にvision側まで到達して問題が再露出しました。
+    そこで初めて、型フィルタ、名前フィルタ、完全名regexという最も整理された解法に到達しました。
+    実際に31Bでこの抽出を適用すると、LoRA対象は410モジュール、未対応スキップは0、学習対象パラメータは全体の約0.39%（122,429,440 / 31,395,515,952）へ収束しました。
+  </p>
+
+  <h2 id="convert">9. 壁③：merge / GGUF / Ollama登録</h2>
+
+  <p>
+    学習が成功しても、それで終わりではありません。
+    Actorとして使うには、アダプターをベースモデルへmergeし、GGUF化し、必要な量子化を行い、Ollamaへ登録する必要があります。
+    私はこの後工程を、最初は学習後のおまけのように考えていました。
+    しかし実際には、ここもQLoRAパイプラインの本体でした。
+  </p>
+
+  <p>
+    Unslothの自動GGUF変換が最新のllama.cpp側の変更に追随できず失敗したこともありました。
+    Gemma 4世代では、<code>tokenizer_config.json</code> の形式差分で変換が止まったこともあります。
+    OllamaにLoRAアダプターを直接読ませる経路に固執したこともありましたが、最終的には
+    <strong>merged full model → GGUF → Ollama</strong> という経路に統一しました。
+  </p>
+
+  <div class="comparison">
+    <div class="box">
+      <h3>学習時の4bit</h3>
+      <p>
+        目的は省メモリ化。
+        4bitでベースモデルをロードし、凍結した重みの横にLoRAアダプターを学習する。
+      </p>
+    </div>
+    <div class="box">
+      <h3>merge時のbf16</h3>
+      <p>
+        目的は劣化を抑えた統合。
+        精度を戻したベースモデルに <code>ΔW</code> を畳み込み、統合済みモデルを作る。
+      </p>
+    </div>
+    <div class="box">
+      <h3>配布・推論時のQ4</h3>
+      <p>
+        目的は実運用向けの軽量化。
+        GGUF化したモデルをQ4_K_Mなどへ再量子化し、Ollamaで使える形へ登録する。
+      </p>
+    </div>
+  </div>
+
+  <div class="takeaway">
+    4bitは学習時と配布時に2回登場しますが、目的が違います。
+    学習時の4bitは省メモリ、配布時のQ4は実運用向けのサイズ削減です。
+    その間にbf16でmergeする理由を理解したことで、アダプターを作る意味と、再量子化する意味がつながりました。
+  </div>
+
+  <h2 id="valley">10. 26B撤退と再挑戦、31Bでつながった理解</h2>
+
+  <p>
+    7世代の中で、最も大きな転換点はGemma 4 26Bでした。
+    推論はできるのに、学習ができない。
+  </p>
+
+  <p>
+    公開されている数値だけを見ると、gemma4:26bはgemma3:27bと同じように扱えるように見えました。
+    Ollama上のサイズはgemma3:27bが約17GB、gemma4:26bが約18GBで大差なく、RTX3090のVRAMは24GB。数字の上では、どう見ても載るはずでした。
+    しかしこれらは、量子化された<strong>推論時</strong>のフットプリントです。学習（HF / QLoRA）時のロードは、これよりはるかに重い。
+    さらにgemma4:26bは <strong>26B-A4B、すなわちMoE</strong> であり、「推論時のアクティブパラメータが軽い」だけで、ファイル上の総重量（重みshardは約49.9GB）が小さいわけではありませんでした。公開サイトには、MoE展開後の重さは載っていません。
+    結果、ホスト側RAM 32GB枠では巨大shardのmmapに失敗し、それを越えてもモデルロード段階でCUDA OOMに達しました。
+    「27Bが通ったのに、表記の小さい26Bが通らない」——その正体は、推論フットプリントと、MoE展開後の学習ロード重量との差でした。当時はこの関係が整理できず、一度26Bから撤退しました。
+  </p>
+
+  <p>
+    しかし撤退は無駄ではありませんでした。
+    E4BでGemma 4世代のClippableLinear問題に触れ、後日26Bへ戻ったときには、手動device_map、CPU offload、PEFT直結、TRL回避などの道具が増えていました。
+    その結果、24GB環境でも限定条件付きで26B QLoRAを成立させ、Actorとして本番投入できました。
+  </p>
+
+  <p>
+    さらに31Bでは、GIGABYTE AI TOP ATOM / GB10の大容量unified memory（121GiB）により、26Bで必要だった重装備が不要になりました。
+    31Bの4bitロードはわずか約17GBで、CPUオフロードなしに全パラメータがGPUへ載ります。
+    しかしその代わりに、全体が素直に載ることでvision_tower側までLoRA対象が届き、Gemma4ClippableLinear問題が再び露出しました。
+    26Bでこの問題を大きく踏まずに済んだのは偶然ではなく、24GBに収めるためのCPUオフロードの副産物として、vision側が対象から外れていたからです。
+    31Bではその副産物が消え、問題が正面に出てきたことで、型・名前・完全名regexという最も整理された解法に到達しました。
+  </p>
+
+  <div class="timeline">
+    <div class="timeline-item">
+      <strong>E4B</strong>
+      Gemma4ClippableLinearに初遭遇。除外とクラス差し替えで突破したが、まだ力技だった。
+    </div>
+    <div class="timeline-item">
+      <strong>26B</strong>
+      OOMとoffloadが主敵。結果的にLoRA対象がtext側へ絞られ、ClippableLinear問題を大きく踏まずに済んだ。
+    </div>
+    <div class="timeline-item">
+      <strong>31B</strong>
+      大容量unified memoryで全体が載ったため、vision側も対象候補に入り、型・名前・完全名regexの必要性を正面から理解した。
+    </div>
+  </div>
+
+  <p>
+    ここで一つ、正直に補足します。本記事で「理解した」と書いている事柄の多くは、検証を完遂した瞬間に分かったものではありません。
+    私は技術検証と振り返りを必ずセットで行います。とくに「納得のいかない成功」や「意味が分からないまま解決してしまった失敗」があったときは、完遂後に作業記録を持ち寄り、「何が起きたのか」を壁打ちします。
+    26Bも同じでした。「モデルの一部をCPUへオフロードした」ことは作業中に分かっていましたが、<strong>なぜTransformerの先頭層をCPUへ逃がし、後半層だけにLoRAアダプターを付けて、Actorとしての味付けが成立したのか</strong>は、後の振り返りで腑に落ちました。Transformerの前半は理解に、後半は表現に効く——だからユーザーに見える「どう言うか」を担うActorなら、後半層にLoRAを当てられれば妥協できるファインチューニングになる、というのが現在の私の理解です。
+    この振り返りの工程は、どのWorkレポートにも現れません。しかし、私の知識を最も結晶化させているのは、おそらくこの工程です。
+  </p>
+
+  <h2 id="effect">11. QLoRAは何を変えたのか</h2>
+
+  <p>
+    QLoRAによって、Actorが突然賢くなるわけではありません。
+    頭脳そのものはベースモデルに依存します。
+    QLoRAが変えるのは、主に応答分布、語彙選択、表現の寄り方です。
+  </p>
+
+  <p>
+    たとえば、疲れたという話題に対して「頭がOOMしている」と返す。
+    おやすみに対して「シャットダウン」と表現する。
+    こうした技術語彙への連想は、単なるツンデレ口調よりも重要でした。
+    私が作りたかったActorは、一般的なキャラクターではなく、AI系技術パートナーとしての語彙を持つ存在だったからです。
+  </p>
+
+  <p>
+    QLoRAがやっているのは、元の重み <code>W</code> を書き換えることではなく、学習した小さな差分（約0.39%）を足して、<strong>欲しい語彙との距離をほんの少し近づける</strong>ことです（正確には、元の勾配へ補正をかける）。
+    「頭がOOM」というあの一言は、推論のたびに走る巨大な行列の掛け算の連鎖の果てに、その0.39%ぶんの差分が確率をわずかに押した結果として選ばれています。
+    薄く、目立たない。それでも、出てくる語彙が変わります。
+  </p>
+
+  <div class="comparison">
+    <div class="box">
+      <h3>プロンプトで作りやすいもの</h3>
+      <ul>
+        <li>基本的な口調</li>
+        <li>応答形式</li>
+        <li>禁止事項</li>
+        <li>役割設定</li>
+        <li>短期的な機嫌やトーン</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h3>QLoRAで寄せたいもの</h3>
+      <ul>
+        <li>特定語彙の自然な出現</li>
+        <li>技術メタファーの選び方</li>
+        <li>応答の温度感</li>
+        <li>短文時の癖</li>
+        <li>Actor固有の違和感</li>
+      </ul>
+    </div>
+  </div>
+
+  <p>
+    この意味で、QLoRAは「人格の全て」ではありません。
+    むしろ、ベースモデル、プロンプト、記憶、Director台本の上に、最後の薄い層として載るものです。
+    だからこそ、QLoRAだけで全てを解決しようとすると破綻します。
+    機嫌は記憶とプロンプトで扱い、文脈はDirectorが扱い、Actorは台本を演じる。
+    QLoRAは、そのActorに固有の語彙と癖を薄く与える。
+    これが現在の理解です。
+  </p>
+
+  <h2 id="failures">12. 失敗から得た設計原則</h2>
+
+  <p>
+    以下は、7世代で踏み抜いた失敗を、原因と現在の設計へ対応させたものです。
+  </p>
+
+  <table class="failure-table">
+    <thead>
+      <tr>
+        <th>踏み抜いた失敗</th>
+        <th>見えた原因</th>
+        <th>現在の設計・解決</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>学習が通ればActorとして使えると思った</td>
+        <td>学習成功と推論成功は別工程。テンプレートやEOSがずれるだけで出力が崩れる。</td>
+        <td>学習時・推論時・Ollama Modelfileのテンプレート構造を揃える。</td>
+      </tr>
+      <tr>
+        <td>データ件数を増やせば品質が上がると思った</td>
+        <td>偏ったデータは語彙崩壊や過学習を起こす。素材量よりバイアス補正が重要だった。</td>
+        <td>日常会話、技術会話、論理問題、短文応答を混ぜ、段階的にスケールする。</td>
+      </tr>
+      <tr>
+        <td>機嫌を別アダプターで毎晩mergeしようとした</td>
+        <td>機嫌はQLoRAではなく、記憶・コンテキスト・プロンプト側の責務だった。</td>
+        <td>統合Actorモデルは固定し、感情温度や文脈はDirector / Prompt / Memoryで制御する。</td>
+      </tr>
+      <tr>
+        <td>LoRA対象をsuffix名だけで指定した</td>
+        <td>同じ <code>q_proj</code> でも、text側とvision側で型も役割も異なる。</td>
+        <td>型フィルタ、名前除外、完全名regexで、text backbone側だけを対象化する。</td>
+      </tr>
+      <tr>
+        <td>型フィルタだけで十分だと思った</td>
+        <td><code>Gemma4ClippableLinear</code> の内側にある <code>Linear4bit</code> は型だけなら通過する。</td>
+        <td><code>vision</code>、<code>projector</code>、<code>multi_modal</code> などを名前で除外する。</td>
+      </tr>
+      <tr>
+        <td>merge / GGUF化を後工程扱いした</td>
+        <td>実運用では、学習済みアダプターをOllamaで使える形へ変換する工程が不可欠だった。</td>
+        <td>bf16 merge → GGUF変換 → Q4再量子化 → Ollama登録までを1つのパイプラインとして扱う。</td>
+      </tr>
+      <tr>
+        <td>Ollamaにアダプターを直接読ませようとした</td>
+        <td>環境やモデル世代によってアダプター直読みに固執すると詰まりやすい。</td>
+        <td>merged full modelを作り、GGUF化してOllamaへ登録する経路に統一する。</td>
+      </tr>
+      <tr>
+        <td>26Bを一度諦めた</td>
+        <td>24GB VRAMだけではなく、CPU側mmap、MoE表記、offload、TRL追加メモリが絡んでいた。</td>
+        <td>手動device_map、CPU offload、PEFT直結、軽量collator、TRL回避を組み合わせる。</td>
+      </tr>
+      <tr>
+        <td>小型モデルで通った経験を大型モデルへ一般化した</td>
+        <td>大型化・世代交代・マルチモーダル化で、詰まりポイントは毎回移動する。</td>
+        <td>新世代モデルでは、最初にモジュールツリー、型、tokenizer、変換器対応を確認する。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="handoff">13. 次世代モデルへの申し送り</h2>
+
+  <p>
+    今回得た具体的な文字列は、そのまま次世代モデルへ持ち越せるとは限りません。
+    <code>Gemma4ClippableLinear</code> というクラス名も、<code>vision_tower</code> というパス名も、将来くるかもしれないGemma 5や別モデルでは変わる可能性があります。
+    引き継ぐべきなのは、固有名詞ではなく手順です。
+  </p>
+
+  <div class="grid">
+    <div class="card">
+      <h3>まず覗く</h3>
+      <p>
+        assumeでtarget_modulesを書かない。
+        まず <code>named_modules()</code> で実物のモジュールツリーを出し、型と名前を確認する。
+      </p>
+    </div>
+    <div class="card">
+      <h3>型で見る</h3>
+      <p>
+        PEFTがLoRAを刺せる型かを確認する。
+        <code>Linear4bit</code> か、独自ラッパーか、内側にLinearを持つのかを分ける。
+      </p>
+    </div>
+    <div class="card">
+      <h3>名前で避ける</h3>
+      <p>
+        Text Actor用途では不要なvision、audio、projector、multi_modalなどの領域を除外する。
+      </p>
+    </div>
+    <div class="card">
+      <h3>完全名で刺す</h3>
+      <p>
+        suffix一致ではなく、残した完全モジュール名をregex化し、狙った層だけにLoRAを刺す。
+      </p>
+    </div>
+  </div>
+
+  <div class="takeaway">
+    QLoRAは、モデルを魔法のように変身させる技術ではありません。
+    むしろ、ローカルLLMのどこが変えられて、どこは変えられないのかを、失敗を通して学ぶための技術でした。
+    その意味で、QLoRAは私にとってローカルLLMの総合格闘技でした。
+  </div>
+
+  <h2 id="materials">14. 関連技術レポート</h2>
+
+  <p>
+    本ページは代表記事として、全体の理解を優先して再構成しています。
+    詳細な作業ログ、エラー、撤退判断、実装断片は、以下のWorkレポート群に分かれています。
+  </p>
+
+  <div class="materials">
+    <div class="material">
+      <strong><a href="../work_reports/Work032.md">Work032: Project Soul Injection: Phase 1 Unsloth環境構築</a></strong>
+      <span class="small">Unslothコンテナ、CUDA環境、RTX3060での初期QLoRA環境構築。</span>
+    </div>
+
+    <div class="material">
+      <strong><a href="../work_reports/Work033.md">Work033: QLoRA Dataset Generation 実装完了</a></strong>
+      <span class="small">小説本文からQLoRA用Q&Aデータセットを生成するETL工程。</span>
+    </div>
+
+    <div class="material">
+      <strong><a href="../work_reports/Work034.md">Work034: Llama-3.1-8B QLoRA Fine-Tuning</a></strong>
+      <span class="small">RTX3060上での初期QLoRA成功、GGUF化、Ollama投入。</span>
+    </div>
+
+    <div class="material">
+      <strong><a href="../work_reports/Work035.md">Work035: Gemma-3 12Bへの移行と人格定着</a></strong>
+      <span class="small">Gemma専用テンプレート、VRAM制約、System PromptとQLoRAの分担。</span>
+    </div>
+
+    <div class="material">
+      <strong><a href="../work_reports/Work036.md">Work036: RTX3090導入とGemma-3-27B学習成功</a></strong>
+      <span class="small">24GB VRAMによる27B QLoRA成立とメモリ使用量の確認。</span>
+    </div>
+
+    <div class="material">
+      <strong><a href="../work_reports/Work037.md">Work037: Gemma 3 27B QLoRA学習環境の完全構築</a></strong>
+      <span class="small">テンプレート/EOS、GGUF変換、Q4_K_M量子化までのパイプライン。</span>
+    </div>
+
+    <div class="material">
+      <strong><a href="../work_reports/Work038.md">Work038: Gemma 3 27B モデルマージと比率調整</a></strong>
+      <span class="small">LoRAアダプターのmerge、配合比率、依存関係の衝突対応。</span>
+    </div>
+
+    <div class="material">
+      <strong><a href="../work_reports/Work070.md">Work070: Gemma 4 E4B QLoRA学習・GGUF化・Ollama実装</a></strong>
+      <span class="small">Gemma4シリーズのQLoRAに挑戦。</span>
+    </div>
+
+    <div class="material">
+      <strong><a href="../work_reports/Work071.md">Work071: Director / Actor分離型チャットボットv2設計</a></strong>
+      <span class="small">Actorが担う責務を切り出した、今回の記事の前提となる全体設計。</span>
+    </div>
+
+    <div class="material">
+      <strong><a href="../work_reports/Work072.md">Work072: Gemma 4 26B A4B のQLoRA成立とOllama本番化</a></strong>
+      <span class="small">26B撤退からの再挑戦、手動offload、PEFT直結、本番Actor化。</span>
+    </div>
+
+    <div class="material">
+      <strong><a href="../work_reports/Work089.md">Work089: GIGABYTE AI TOP ATOMでのGemma4 31B QLoRA成立</a></strong>
+      <span class="small">GB10環境下で31Bファインチューニングの成立、本番Actorのバージョンアップ。</span>
+    </div>
+  </div>
+
+  <div class="footer-nav">
+    <p>
+      <a href="../memory_context_ai_agent/index.html">記憶と文脈を維持するAIエージェントへ</a> /
+      <a href="../work_reports/index.html">公開済み実レポート一覧へ</a> /
+      <a href="../index.html">AI / LLM 技術ポートフォリオへ戻る</a>
+    </p>
+    <p class="small">
+      Note: 本ページでは、セキュリティおよびプライバシー保護のため、IPアドレス、ポート番号、認証情報、具体的な内部パス、個人用会話ログを掲載していません。
+      公開可能な範囲として、モデル名、ハードウェア名、ライブラリ名、Work番号、設計上の判断のみを記載しています。
+    </p>
+  </div>
+  <!-- Cloudflare Web Analytics -->
+    <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "8ce3e98ab99e430188efa5026f5eb166"}'></script>
+  <!-- End Cloudflare Web Analytics -->
+</body>
+</html>
