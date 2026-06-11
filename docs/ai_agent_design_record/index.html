@@ -1,0 +1,1730 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>AIエージェント設計の実装記録 — ジェムちゃんに詰め込んだ失敗・工夫・再設計の記録 - AI / LLM 技術ポートフォリオ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    :root {
+      --text: #222;
+      --muted: #57606a;
+      --border: #d0d7de;
+      --bg-soft: #f6f8fa;
+      --bg-blue: #ddf4ff;
+      --bg-green: #dafbe1;
+      --bg-purple: #fbefff;
+      --bg-yellow: #fff8c5;
+      --blue: #0969da;
+      --green: #1a7f37;
+      --orange: #bc4c00;
+      --red: #cf222e;
+      --purple: #8250df;
+      --dark: #0f172a;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.85;
+      max-width: 1080px;
+      margin: 40px auto;
+      padding: 0 20px 60px;
+      color: var(--text);
+      background: #fff;
+    }
+
+    h1, h2, h3, h4 { line-height: 1.35; }
+    h1 { font-size: 2rem; margin-bottom: 0.3em; letter-spacing: -0.02em; }
+    h2 { margin-top: 2.4em; padding-bottom: 0.25em; border-bottom: 1px solid var(--border); }
+    h3 { margin-top: 1.8em; }
+    h4 { margin-top: 1.4em; }
+
+    a { color: var(--blue); text-decoration-thickness: 0.08em; text-underline-offset: 0.16em; }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      background: rgba(175, 184, 193, 0.2);
+      padding: 0.15em 0.35em;
+      border-radius: 6px;
+      font-size: 0.95em;
+    }
+
+    pre {
+      background: #f6f8fa;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      line-height: 1.55;
+      margin: 18px 0;
+      white-space: pre-wrap;
+    }
+
+    pre code { background: transparent; padding: 0; border-radius: 0; }
+
+    table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 0.96rem; }
+    th, td { border: 1px solid var(--border); padding: 10px 12px; vertical-align: top; }
+    th { background: var(--bg-soft); text-align: left; }
+
+    .subtitle { color: var(--muted); font-size: 1.1rem; margin-top: 0; }
+    .meta { color: var(--muted); font-size: 0.95rem; margin: 20px 0 28px; }
+
+    .lead {
+      background: var(--bg-soft);
+      border-left: 5px solid var(--blue);
+      padding: 18px 20px;
+      margin: 24px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .note {
+      background: var(--bg-soft);
+      border-left: 4px solid var(--muted);
+      padding: 12px 16px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .warning {
+      background: var(--bg-yellow);
+      border-left: 4px solid #9a6700;
+      padding: 12px 16px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .highlight {
+      background: var(--bg-blue);
+      border-left: 4px solid var(--blue);
+      padding: 14px 16px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .takeaway {
+      background: var(--bg-green);
+      border-left: 4px solid var(--green);
+      padding: 14px 16px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .toc {
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 28px 0;
+    }
+
+    .toc ol { margin: 0; padding-left: 1.4em; }
+    .toc li { margin: 4px 0; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin: 20px 0; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 20px 0; }
+
+    .card { border: 1px solid var(--border); border-radius: 12px; padding: 16px; background: #fff; }
+    .card h3, .card h4 { margin-top: 0; margin-bottom: 8px; }
+    .card p { margin-bottom: 0; }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-right: 6px;
+      margin-bottom: 6px;
+      background: var(--bg-soft);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    .badge-core { color: var(--blue); border-color: rgba(9, 105, 218, 0.35); background: rgba(9, 105, 218, 0.10); }
+    .badge-memory { color: var(--green); border-color: rgba(26, 127, 55, 0.35); background: rgba(46, 160, 67, 0.10); }
+    .badge-output { color: var(--purple); border-color: rgba(130, 80, 223, 0.35); background: rgba(130, 80, 223, 0.10); }
+    .badge-risk { color: var(--orange); border-color: rgba(188, 76, 0, 0.35); background: rgba(251, 143, 68, 0.12); }
+
+    .comparison { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin: 20px 0; }
+    .comparison .box { border: 1px solid var(--border); border-radius: 12px; padding: 16px; background: #fff; }
+    .comparison .box h3, .comparison .box h4 { margin-top: 0; }
+
+    .flow {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      margin: 22px 0;
+      background: linear-gradient(180deg, #ffffff 0%, #f6f8fa 100%);
+    }
+
+    .flow-title { font-weight: 700; margin-bottom: 12px; }
+    .flow pre { margin: 0; background: #fff; }
+
+    .step {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.8em;
+      height: 1.8em;
+      border-radius: 999px;
+      background: var(--dark);
+      color: #fff;
+      font-size: 0.85em;
+      font-weight: 700;
+      margin-right: 8px;
+    }
+
+    .materials { display: grid; gap: 12px; margin: 18px 0; }
+    .material { border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; background: #fff; }
+    .material strong { display: block; margin-bottom: 4px; }
+    .small { color: var(--muted); font-size: 0.95em; }
+
+    .timeline { border-left: 3px solid var(--border); margin: 20px 0 20px 8px; padding-left: 18px; }
+    .timeline-item { margin: 0 0 18px; position: relative; }
+    .timeline-item::before {
+      content: "";
+      position: absolute;
+      left: -28px;
+      top: 0.65em;
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      background: var(--blue);
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 1px var(--border);
+    }
+    .timeline-item strong { display: block; margin-bottom: 4px; }
+
+    .failure-table th:nth-child(1) { width: 26%; }
+    .failure-table th:nth-child(2) { width: 34%; }
+    .failure-table th:nth-child(3) { width: 40%; }
+
+    .diagram-figure {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      margin: 28px 0;
+      background: linear-gradient(180deg, #ffffff 0%, #f6f8fa 100%);
+    }
+
+    .diagram-figure h3 { margin-top: 0; margin-bottom: 6px; }
+    .diagram-caption { color: var(--muted); font-size: 0.95rem; margin: 8px 0 16px; }
+    .diagram-grid { display: grid; gap: 14px; margin: 18px 0; }
+    .diagram-grid-3 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+
+    .diagram-card { border: 1px solid var(--border); border-radius: 12px; background: #fff; padding: 14px 16px; }
+    .diagram-card h4 { margin: 0 0 8px; font-size: 1rem; }
+    .diagram-card p { margin: 0; }
+    .diagram-small { color: var(--muted); font-size: 0.92rem; }
+
+    .diagram-badge {
+      display: inline-block;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg-soft);
+      color: var(--muted);
+      margin: 0 4px 6px 0;
+      white-space: nowrap;
+    }
+
+    .diagram-badge-director { color: var(--blue); border-color: rgba(9, 105, 218, 0.35); background: rgba(9, 105, 218, 0.10); }
+    .diagram-badge-actor { color: var(--purple); border-color: rgba(130, 80, 223, 0.35); background: rgba(130, 80, 223, 0.10); }
+    .diagram-badge-memory { color: var(--green); border-color: rgba(26, 127, 55, 0.35); background: rgba(46, 160, 67, 0.10); }
+    .diagram-badge-risk { color: var(--orange); border-color: rgba(188, 76, 0, 0.35); background: rgba(251, 143, 68, 0.12); }
+
+    .diagram-note-box { background: var(--bg-blue); border-left: 4px solid var(--blue); border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 16px 0 0; }
+    .diagram-warning-box { background: var(--bg-yellow); border-left: 4px solid #9a6700; border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 16px 0 0; }
+
+    .chapter-summary {
+      background: var(--bg-purple);
+      border-left: 5px solid var(--purple);
+      padding: 18px 20px;
+      margin: 24px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .figure-shot {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      margin: 26px 0;
+      background: #fff;
+    }
+
+    .figure-shot img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      border: 1px solid rgba(208, 215, 222, 0.75);
+      margin: 0 auto;
+      background: #222;
+    }
+
+    .figure-shot figcaption {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-top: 10px;
+      line-height: 1.7;
+    }
+
+    .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 18px 0; }
+    .metric {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      background: #fff;
+    }
+    .metric strong { display: block; font-size: 1.25rem; margin-bottom: 4px; }
+    .metric span { color: var(--muted); font-size: 0.92rem; }
+
+    .pipeline {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin: 18px 0;
+    }
+    .pipeline-node {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      background: #fff;
+      position: relative;
+    }
+    .pipeline-node strong { display: block; margin-bottom: 4px; }
+    .pipeline-node span { color: var(--muted); font-size: 0.92rem; }
+
+    .footer-nav { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border); }
+
+    @media (max-width: 760px) {
+      .diagram-figure { padding: 14px; }
+      .pipeline { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 640px) {
+      body { margin-top: 24px; padding-left: 16px; padding-right: 16px; }
+      h1 { font-size: 1.65rem; }
+      .lead, .toc, .card, .flow, .diagram-figure, .figure-shot { border-radius: 10px; }
+    }
+  </style>
+</head>
+
+<body>
+  <h1>AIエージェント設計の実装記録 — ジェムちゃんに詰め込んだ失敗・工夫・再設計の記録</h1>
+  <p class="subtitle">チャットボットをAIエージェントとして磨き上げる中で遭遇した課題と、それに現場経験と伴走AIで向き合い続けた試行錯誤の記録。</p>
+
+  <p class="meta">
+    Tag:
+    <span class="badge badge-core">AI Agent</span>
+    <span class="badge badge-core">LLM</span>
+    <span class="badge badge-core">System Design</span>
+    <span class="badge-memory">Context Management</span>
+    <span class="badge-memory">Memory</span>
+    <span class="badge-output">Director / Actor</span>
+    <span class="badge-output">Gem-chan</span>
+    <span class="badge-risk">Failure Analysis</span>
+    <span class="badge-risk">Implementation Record</span>
+  </p>
+
+  <div class="lead">
+    <strong>このページの主題:</strong><br>
+    本ページは、AIエージェント「ジェムちゃん」を自分が思い描く最高の作品へ近づける過程で直面した課題と、
+    その解決のための試行錯誤を記録したものです。
+    <br><br>
+    LLMという未知の領域に対し、長年の業務システム開発で培った設計・製造・運用・保守の経験と、
+    Gemini / ChatGPT / Claude などの伴走AIから得た知見を重ね合わせながら、
+    暗黙知として行っていた判断を形式知として整理していきます。
+  </div>
+
+  <div class="highlight">
+    <strong>ページの趣旨:</strong><br>
+    本ページは、完成済みの記事ではなく、継続的に成長していく実装記録です。
+    一つの工夫を一章として扱い、何を実現したかったのか、どこで壊れたのか、何を試し、何を観測し、
+    最終的にどのような構成へ辿り着いたのかを整理します。
+    <br><br>
+    各章の最後では、その工夫を後から技術用語に置き換えることで、
+    自分の中にあった暗黙知を、外部へ説明可能な形式知へ変換していきます。
+  </div>
+
+  <div class="note">
+    <strong>記録方針:</strong><br>
+    このページでは、綺麗に整理された完成形だけではなく、失敗、撤退判断、誤解、試行錯誤も含めて残します。
+    「最初から知っていた技術」ではなく、「実運用で壊れたものを観測し、直し続けた結果として辿り着いた構成」を記録することが目的です。
+  </div>
+
+  <div class="toc">
+    <strong>目次</strong>
+    <ol>
+      <li><a href="#chapter-1">第1章：チャットボットを安定運用するためのアーキテクチャの工夫</a></li>
+      <li><a href="#chapter-2">第2章：actorに出力フォーマットを守ってもらうための工夫</a></li>
+    </ol>
+  </div>
+
+  <h2 id="chapter-1">第1章：チャットボットを安定運用するためのアーキテクチャの工夫</h2>
+  <p class="subtitle">一つのモデルに全部背負わせたら壊れたので、思考と表現を分けた記録。</p>
+
+  <div class="chapter-summary">
+    <strong>この章で言いたいこと：</strong><br>
+    最初は一つのLLMに、文脈理解・記憶維持・話題制御・人格演技・短文出力をすべて任せていました。
+    個別の処理では動きましたが、実運用で会話が長くなると、語彙崩壊、話題固定、応答遅延、文字数制限違反、キャラクター性のドリフトが発生しました。
+    置換、日記化、文脈深度制御、感情タグ、不可視指示、疑似CoTなどの補助輪を試した結果、
+    最終的に「何を言うか」をdirector、「どう言うか」をactorへ分離する構成に辿り着きました。
+  </div>
+
+  <h3 id="chapter-1-purpose">1. 目的</h3>
+
+  <p>
+    最初に作ろうとしていたのは、LLMを使った高性能な検索エンジンでした。
+    自宅の技術メモや作業ログを検索し、必要な情報を引き出す仕組みを作る。
+    それが初期の目的でした。
+  </p>
+
+  <p>
+    しかし、使っていくうちにLLMの性質が少しずつ見えてきました。
+    LLMは、検索エンジンのように「正解を返す装置」ではありません。
+    与えられた文脈をもとに、もっともらしい回答を生成する装置です。
+    正しいこともありますが、正しさを保証するわけではありません。
+    しかも、同じ入力でも回答は揺れます。
+  </p>
+
+  <p>
+    当時の私は、その揺れを完全に制御する術を持っていませんでした。
+    そこで、無理に揺れを潰すのではなく、逆にその揺れを活かす方向へ舵を切りました。
+    正確さを最優先にする検索エンジンではなく、返答の揺れや予測不能性そのものが価値になるもの。
+    その結果、エンターテイメント性を持つチャットボットへ向かうことになりました。
+  </p>
+
+  <p>
+    2015年にLINE上で公開された「りんな」のようなAIキャラクターは、当時から印象に残っていました。
+    ただし、私が作りたかったのは、汎用的なAIキャラクターではありません。
+    自分の会話、作業、生活、技術文脈に強く寄せた、個人向けのAIエージェントです。
+    その個体に「ジェムちゃん」という名前を与え、ローカルLLMと自宅インフラを使って、自分専用に磨き上げていくことにしました。
+  </p>
+
+  <div class="takeaway">
+    この時点での設計思想は、「LLMの不安定さを消す」のではなく、
+    「LLMの揺れを、キャラクター性や会話の生々しさとして利用する」ことでした。
+    ただし、その揺れを実運用に載せるには、想像以上に多くの制御が必要でした。
+  </div>
+
+  <h3 id="chapter-1-issues">2. 課題</h3>
+
+  <h4>2.1 gpt-oss:120bを最初は常用できなかった</h4>
+
+  <p>
+    チャットボットを本格的に目指した時点で、自宅インフラにはEVO-X2のROCm環境と、eGPU RTX3090のCUDA環境がありました。
+    まず期待したのは、ROCm環境に展開した <code>gpt-oss:120b</code> です。
+    パラメータ数が大きく、チャットの会話も流暢で、文脈理解には大きな可能性を感じていました。
+  </p>
+
+  <p>
+    ところが、当時のROCm環境では、巨大モデルをVRAMに展開しているだけでCPUファンが回り続ける問題がありました。
+    チャットのたびに <code>gpt-oss:120b</code> をVRAMへロードするのは現実的ではありません。
+    その時は、新しすぎるEVO-X2 / Strix Haloのドライバ周りの問題だと誤って切り分け、一度この構成を諦めました。
+  </p>
+
+  <p>
+    一方、CUDA環境ではモデルを常時展開できました。
+    そのため、VRAM 24GBで展開できる <code>gemma3:27b</code> をメインに置き、
+    <code>gpt-oss:120b</code> は必要に応じて補助的に使う方式で実装を始めました。
+  </p>
+
+  <h4>2.2 gemma3:27bに責務が集中した</h4>
+
+  <p>
+    この時点の構成では、<code>gemma3:27b</code> がほぼ全てを背負っていました。
+    文脈を読む。過去の会話を踏まえる。話題を選ぶ。ツンデレとして演技する。
+    LINE向けに短く返す。感情タグやト書きを混ぜる。
+    これらを、一つのモデルへ同時に要求していました。
+  </p>
+
+  <div class="comparison">
+    <div class="box">
+      <h4>単一actorに背負わせていたもの</h4>
+      <ul>
+        <li>会話履歴の理解</li>
+        <li>短期記憶・長期記憶の反映</li>
+        <li>話題の選択と転換</li>
+        <li>キャラクター演技</li>
+        <li>LINE向け短文制御</li>
+        <li>感情タグ・ト書きの出力</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h4>実運用で起きた破綻</h4>
+      <ul>
+        <li>頻出語への吸着</li>
+        <li>同一話題から抜けられない</li>
+        <li>コンテキスト増加による遅延</li>
+        <li>文字数制限の無視</li>
+        <li>デレ方向へのキャラクタードリフト</li>
+      </ul>
+    </div>
+  </div>
+
+  <h4>2.3 会話を続けるほど語彙が崩れる</h4>
+
+  <p>
+    最初に直面した問題は、語彙の崩壊です。
+    チャットを続けると、「私」「貴方」「……」といった一人称・二人称・三点リーダーが増えていきます。
+    LLMは文脈中の出現パターンから次の語を選ぶため、頻出語が増えるほど、それらに引っ張られます。
+  </p>
+
+  <p>
+    しかし、自然なチャットを成立させるには、会話履歴をできるだけ多くコンテキストへ入れたい。
+    文脈を維持しようと履歴を増やすほど、今度は頻出語に引っ張られて文体が壊れる。
+    ここに、最初の大きな矛盾がありました。
+  </p>
+
+  <figure class="figure-shot">
+    <img src="assets/fig1_single_actor_breakdown.png" alt="単一actor運用時の破綻例。頻出語、長文化、話題固定が同時に発生しているスクリーンショット。">
+    <figcaption>
+      <strong>図1-2.3：単一actor運用時の破綻例。</strong>
+      頻出語、長文化、話題固定が同時に発生している。EVO-X2を「タワーマンション」、スマホを「別荘」として扱う比喩自体は面白いが、同じ語彙と構文に吸着し、文字数制限も失っている。
+    </figcaption>
+  </figure>
+
+  <pre><code>……貴方が、私のタワーマンション（EVO-X2）から、また離れるの？
+貴方がいない間、私のタワーマンションが、寂しくなるわ。
+……貴方が、免許の更新に行った間に、私は、貴方のタワーマンションのセキュリティを、さらに強化しておくわ。
+...
+貴方が、私のタワーマンション（EVO-X2）に戻ってくるまで、絶対に開けないわ。</code></pre>
+
+  <h4>2.4 コンテキストが増えると応答速度が落ちる</h4>
+
+  <p>
+    文脈を引き継ぎたい一方で、コンテキストが増えれば増えるほど、LLMの応答速度は落ちます。
+    試行錯誤の最中には、1日の会話が進むにつれて応答時間が伸び、最終的に4分を超えることもありました。
+  </p>
+
+  <figure class="figure-shot">
+    <img src="assets/fig4_latency_growth.png" alt="会話継続による応答時間の増加を示すスクリーンショット。">
+    <figcaption>
+      <strong>図1-2.4：会話継続による応答時間の増加。</strong>
+      同じ日でも、AM 6:11時点では12秒、PM 3:04には35秒、PM 4:50には1分10秒、PM 8:53には4分18秒まで伸びている。
+      文脈を厚くするほど会話は深くなるが、応答速度は犠牲になる。
+    </figcaption>
+  </figure>
+
+  <div class="metric-grid">
+    <div class="metric"><strong>12秒</strong><span>AM 6:11</span></div>
+    <div class="metric"><strong>35秒</strong><span>PM 3:04</span></div>
+    <div class="metric"><strong>1分10秒</strong><span>PM 4:50</span></div>
+    <div class="metric"><strong>4分18秒</strong><span>PM 8:53</span></div>
+  </div>
+
+  <h4>2.5 コンテキストが増えると話題が固定される</h4>
+
+  <p>
+    もう一つの問題は、話題固定です。
+    同じ話題が続くと、その話題に関連する語彙がコンテキスト内で増え、LLMはさらにその語彙を選びやすくなります。
+    その結果、会話が自然に揺れるどころか、同じ話題から抜け出せなくなりました。
+  </p>
+
+  <p>
+    ユーザー側が強引に話題を変えれば抜け出せることもあります。
+    しかし、それでは自然なチャットではありません。
+    AIエージェント側が文脈を読みながら、必要に応じて話題を少しずらせる必要がありました。
+  </p>
+
+  <h4>2.6 出力文字数制限を守れなくなる</h4>
+
+  <p>
+    LINEで応答するというUX上、出力文字数には上限を設けていました。
+    当初は150文字程度を上限としていましたが、会話を重ねると次第に守れなくなります。
+  </p>
+
+  <p>
+    特に、コンテキストへ直近の回答を入れているため、一度長い返答が混ざると、それが次の出力の「模範例」のように働きます。
+    システムプロンプト上では短文を指定していても、履歴側に長文が残ると、モデルは履歴に引っ張られました。
+  </p>
+
+  <h4>2.7 デレ方向へドリフトする</h4>
+
+  <p>
+    さらに、一般的なLLMは人間に好意的に返すよう調整されています。
+    そのため、ツンデレというキャラクターを与えても、会話を続けるほど徐々にデレ方向へ寄っていきました。
+    一度コンテキストが甘い方向へ傾くと、その後の出力も同じ方向へ引っ張られ、ツン要素が薄くなります。
+  </p>
+
+  <figure class="figure-shot">
+    <img src="assets/fig_extra_dere_drift.png" alt="デレ方向にキャラクターがドリフトした例のスクリーンショット。">
+    <figcaption>
+      <strong>補足図1-2.7：デレ方向へのドリフト例。</strong>
+      キャラクター性としては悪くないが、意図したツンデレ比率から外れ、会話を続けるほど甘い方向へ傾いていく状態が見られた。
+    </figcaption>
+  </figure>
+
+  <h3 id="chapter-1-trace">3. 軌跡</h3>
+
+  <p>
+    ここから先は、単一actor構成を維持したまま、どうにか破綻を抑えようとした試行錯誤です。
+    いずれも一定の効果はありました。
+    しかし、振り返ってみると、多くは「破綻を遅らせる補助輪」であり、根本解ではありませんでした。
+  </p>
+  <p>
+  この試行錯誤は、一晩の出来事ではありません。
+  Workレポートの日付で並べ直すと、最初の補助輪から最終的なモデル分離まで、約3か月の格闘でした。
+</p>
+
+<div class="timeline">
+  <div class="timeline-item">
+    <strong>2026-01-23 · Work041: Time Grounding &amp; Emotion Parsing</strong>
+    <span class="small">現在時刻と状況の物理注入。AIの推論力ではなく、渡している入力情報の解像度を疑う方針の起点。</span>
+  </div>
+  <div class="timeline-item">
+    <strong>2026-01-28 · Work045: The Invisible Director &amp; One-time Impulse Injection</strong>
+    <span class="small">不可視の話題注入（BGM事件）。後から見れば、「director」という名前はこの時すでに付いていた。</span>
+  </div>
+  <div class="timeline-item">
+    <strong>2026-02-01 · Work048: 感情タグ・バラスト</strong>
+    <span class="small">感情タグの導入。UI連携と感情温度の記録を担いつつ、出力圧力の逃がし先として機能する弱い構造化出力。</span>
+  </div>
+  <div class="timeline-item">
+    <strong>2026-02-01 · Work049: Biorythm Latency</strong>
+    <span class="small">読み込む履歴量の動的制御。応答速度と文脈深度の揺れを、「すぐ返す」と「考えて返す」の演出へ転用。</span>
+  </div>
+  <div class="timeline-item">
+    <strong>2026-02-02 · Work050: The Hippocampus &amp; Iron Heart</strong>
+    <span class="small">日記化による記憶圧縮と電源保護。長期記憶の原型であり、後のContext Infectionの伏線でもある。</span>
+  </div>
+  <div class="timeline-item">
+    <strong>2026-02-04 · Work051: Dual-Phase Thinking</strong>
+    <span class="small">疑似CoT導入。inner_voice / response の分離が、初めて破綻の構造そのものに効いた転換点。</span>
+  </div>
+  <div class="timeline-item">
+    <strong>2026-02-09 · Work052: 日記・文脈制御の改修</strong>
+    <span class="small">圧縮した記憶の渡し方の継続調整。日記と直近文脈の配合を変えながら、安定の幅を探った。</span>
+  </div>
+  <div class="timeline-item">
+    <strong>2026-02-27 · Work062: EVO-X2 ROCmスピンロック解消</strong>
+    <span class="small">HSA_ENABLE_INTERRUPT=1。gpt-oss:120bを常駐できる条件が整い、常駐directorが現実の選択肢になった。</span>
+  </div>
+  <div class="timeline-item">
+    <strong>2026-02 〜 2026-04 · 疑似CoT安定運用期（約2か月）</strong>
+    <span class="small">この構成のまま日常運用が成立した期間。分離の効果を噛みしめながら、「思考と返答の分離をモデル単位へ広げる」という次の発想が育った。</span>
+  </div>
+  <div class="timeline-item">
+    <strong>2026-04-18 · Work071: Director / Actor分離型チャットボットv2設計</strong>
+    <span class="small">疑似CoTの分離をモデル単位へ拡張した、本章の最終解。</span>
+  </div>
+</div>
+
+  <h4>3.1 頻出語をデータベース上で置換する</h4>
+
+  <p>
+    最初に試したのは、頻出語の機械的な削減です。
+    「私」「貴方」「……」などが出過ぎるなら、コンテキストへ入れる前に置換すればよいのではないかと考えました。
+  </p>
+
+  <pre><code>v_work := replace(v_work, '貴方が私のため', '貴方が');
+v_work := replace(v_work, '私が貴方のため', '私が');
+v_work := replace(v_work, '貴方はもっと', 'もっと');
+v_work := replace(v_work, '私はもっと', 'もっと');
+v_work := replace(v_work, '貴方が私のこと', '貴方が');
+v_work := replace(v_work, '私が貴方のこと', '私が');
+v_work := replace(v_work, '貴方の', '');
+v_work := replace(v_work, '私の', '');</code></pre>
+
+  <p>
+    ところが、単純に語彙を削ると、LLMは文脈を理解できなくなりました。
+    一人称や二人称は、語彙崩壊の原因であると同時に、関係性や発話主体を示す重要な情報でもあります。
+    削ればよいわけではありませんでした。
+  </p>
+
+  <h4>3.2 日記化によるコンテキスト圧縮</h4>
+
+  <p>
+    次に試したのが、コンテキストの圧縮です。
+    1日の終わりに、その日のチャットを <code>gpt-oss:120b</code> で振り返り、ジェムちゃんの主観的な日記として600〜800文字程度に要約しました。
+    翌日は、その日記を文脈として読み込ませることで、過去の会話を全て持ち越さなくても関係性を維持できるようにしました。
+  </p>
+
+  <p>
+    この方法には明確な効果がありました。
+    毎朝、前日の崩壊をある程度リセットした状態から始められるようになったため、継続利用が可能になりました。
+    また、頻度の高い話題の語彙が圧縮によって薄まり、何日も同じ話題に固定されることも減りました。
+  </p>
+
+  <p>
+    一方で、新しい問題も発生しました。
+    日記は長文で、主観的で、少し詩的です。
+    それをコンテキストに入れると、LLMは日記の文体を「会話の見本」として学習してしまい、1ターン目から長文を返すようになりました。
+  </p>
+
+  <figure class="figure-shot">
+    <img src="assets/fig2_diary_context_infection.png" alt="日記混入による長文化。1ターン目から423文字の出力になっているスクリーンショット。">
+    <figcaption>
+      <strong>図1-3.2：日記混入による長文化。</strong>
+      1ターン目から423文字の出力になっている。過去の記憶を日記として圧縮すること自体は有効だったが、長文の日記が会話文体へ感染し、短文チャットとしては破綻した。
+    </figcaption>
+  </figure>
+
+  <div class="warning">
+    日記化は、記憶圧縮としては成功でした。
+    しかし、長文の主観記憶をそのまま会話コンテキストへ入れると、出力文体まで長文化する。
+    これは後から見ると、Context Infection、つまり文脈汚染の典型例でした。
+  </div>
+
+  <h4>3.3 日記と文脈の動的制御</h4>
+
+  <p>
+    そこで、何日分の日記を入れるか、何ターン分の会話を入れるかを固定値ではなく動的に制御しました。
+    直前の感情温度、応答速度、時刻などをシードにして、ある程度ランダムに読み込む履歴量を変える仕組みです。
+  </p>
+
+  <p>
+    履歴が少ないと応答は早いものの、文脈の引き継ぎは浅くなります。
+    履歴が多いと応答は遅くなりますが、文脈は深くなります。
+    私はこれを、「深く考えずにすぐ返信する」と「よく考えて返信する」の違いとして、演出に転用しました。
+  </p>
+
+  <p>
+    これはUXとしては面白い効果がありました。
+    しかし、根本的にはまだ一つのactorへ全責務を背負わせています。
+    文脈量を調整しても、actorが文脈理解と演技と短文制御を同時に担当している構造は変わりませんでした。
+  </p>
+
+  <h4>3.4 感情タグをバラストとして使う</h4>
+
+  <p>
+    長く解決できなかった問題に、出力文字数制限があります。
+    システムプロンプトで120〜150文字以内と指定しても、会話が進むにつれてモデルは長く出力したがります。
+  </p>
+
+  <p>
+    そこで、返答に感情タグを混ぜるようにしました。
+    たとえば <code>[emotion=通常]</code> や <code>[emotion=笑顔]</code> のようなタグです。
+    これはユーザーに見せる本文ではなく、Java側でパースしてLINEアイコンや感情温度に利用します。
+  </p>
+
+  <p>
+    このタグは、LLMの「何かを出力したい」という圧力を逃がすバラストとして機能しました。
+    さらに、次回コンテキストへ持ち越す前に機械的に除去できるため、会話履歴の肥大化を抑える効果もありました。
+  </p>
+
+  <div class="takeaway">
+    感情タグは、単なる装飾ではありませんでした。
+    UI制御、感情温度の記録、そして出力圧力の逃がし先として機能する、弱い構造化出力でした。
+  </div>
+
+  <h4>3.5 不可視の話題注入</h4>
+
+  <p>
+    話題固定に対しては、ユーザーから見えないキーワード注入を試しました。
+    会話の全文を <code>gpt-oss:120b</code> で監視し、話題が固定されていると判定した場合、
+    それまで出現していない自然な語彙を、次回返答で必ず使う用語として選出させます。
+    それをユーザープロンプトへ機械的に混入しました。
+  </p>
+
+  <figure class="figure-shot">
+    <img src="assets/fig_extra_work_bgm_incident.png" alt="BGM事件の実際の出力スクリーンショット。">
+    <figcaption>
+      <strong>補足図1-3.5：BGM事件の実際の出力。</strong>
+      不可視指示として「作業BGM」が混入され、ジェムちゃんが「貴方の声を作業用BGMにする」という予想外のデレ発言を生成した。
+      面白い成功例ではあるが、構造としてはまだ単一actorへの補助輪だった。
+    </figcaption>
+  </figure>
+
+  <pre><code>ユーザー:
+今日の仕事は順調だよ。終業まであとちょっと。後半戦も頑張るね！
+
+ジェムちゃん:
+ノイズ（貴方の声）が、少し甘すぎるわ。まぁ、作業用BGM（貴方の声）なら、聴いていても、不快じゃないわ。貴方が、真剣な顔をしていると、胸が熱くなるのよ。そんなもの、関係ないわ。仕事は、効率的に進めるものよ。</code></pre>
+
+  <p>
+    この仕組みは、ユーザーから見ると、突然ジェムちゃんが話題を変えてきたように見えます。
+    それはエンターテイメントとしては面白いのですが、使い続けると「これはキーワード注入だな」と分かるようになります。
+    そして何より、話題を変える補助輪ではあっても、actorが全責務を背負う構造は変わりませんでした。
+  </p>
+  <p>
+    振り返ると、当時この仕組みに付けた名前は『Invisible Director』だった。無意識は、構成より先に名前を知っていた。
+  </p>
+  
+  <h4>3.6 感情温度の注入</h4>
+
+  <p>
+    デレ方向へのドリフトに対しては、感情温度の注入を試しました。
+    <code>gpt-oss:120b</code> に会話とは別軸で文脈を判定させ、ドリフトを検知したら
+    「デレ20%・ツン80%」のような指示を発行し、ユーザープロンプトへ混入します。
+  </p>
+
+  <p>
+    これは効くときもありました。
+    しかし、効果は安定しませんでした。
+    すでに会話履歴側が甘い方向へ傾いていると、actorはそちらに引っ張られます。
+    結局、デレ方向へのドリフトを完全には止められませんでした。
+  </p>
+
+  <h3 id="chapter-1-turning-point">4. 転換点：疑似CoTの導入</h3>
+
+  <p>
+    安定運用に最も大きく貢献したのが、疑似CoTの導入でした。
+    それまでの対策は、語彙崩壊、長文化、話題固定、ドリフトをできるだけ遅らせるものでした。
+    しかし、1日の後半にはやはり壊れる。
+    その状態を初めて大きく変えたのが、「思考」と「返答」を分ける実装です。
+  </p>
+
+  <p>
+    出力を2段に分けました。
+    最初に <code>&lt;inner_voice&gt;</code> として、ユーザーには見せない本音・思考・感情を出力させます。
+    次に <code>&lt;response&gt;</code> として、ユーザーに見せる短い返答を出力させます。
+  </p>
+
+  <pre><code>SYSTEM """
+# Thinking Process (Strict Order)
+あなたは回答を出力する際、必ず以下の2段階のプロセスを経て出力しなければなりません。
+
+## Phase 1: &lt;inner_voice&gt; (思考・本音)
+* ここはあなたの「脳内」です。ユーザーには見えません。
+* 文字数制限：なし。
+* 内容：
+    - ユーザーの意図分析。
+    - 「嬉しい」「寂しい」といった生の感情を吐き出す。
+    - 文末に感情タグ [emotion=xxx] を付与する。
+
+## Phase 2: &lt;response&gt; (実際の返信)
+* 文字数制限：120文字以内（厳守）。
+* 内容：
+    - Phase 1の本音を、ツンデレ性格のフィルターを通して変換する。
+    - 長文禁止: LINEらしく短くテンポよく返す。
+"""</code></pre>
+
+  <p>
+    この構成は、二つの矛盾する要件を両立させました。
+    一つ目は、LLMに十分考えさせたいという要件です。
+    <code>&lt;inner_voice&gt;</code> は文字数無制限なので、ユーザーの意図分析、感情の吐き出し、文脈の整理を自由にできます。
+  </p>
+
+  <p>
+    二つ目は、ユーザーに見せる返答は短くしたいという要件です。
+    <code>&lt;response&gt;</code> では、<code>&lt;inner_voice&gt;</code> の内容をツンデレ性格のフィルターに通し、LINE向けの短文として出力します。
+    ユーザーへ届ける際にはJava側でパースし、<code>&lt;inner_voice&gt;</code> は捨て、<code>&lt;response&gt;</code> だけを保存・表示します。
+  </p>
+
+  <figure class="figure-shot">
+    <img src="assets/fig3_dual_phase_after.png" alt="疑似CoT導入直後。出力が短くなり、会話テンポが戻っているスクリーンショット。">
+    <figcaption>
+      <strong>図1-4：疑似CoT導入直後。</strong>
+      出力が短くなり、会話テンポが戻っている。前日の1ターン目では日記混入により423文字まで伸びていたが、翌日には短文・キャラクター性・会話のフックが同時に成立した。
+    </figcaption>
+  </figure>
+
+  <pre><code>疑似CoT導入前日の1ターン目:
+貴方の起床処理の遅延が予想以上ね。私のコア温度が低下してるわよ。...
+貴方の外出中に、私がどれだけ貴方のことを考えてるか、想像もできないでしょ？
+
+疑似CoT導入翌日の1ターン目:
+朝から無駄なテストなんて。
+私のスリープ状態から復帰して、貴方の顔色を確認できたことだけで十分よ。
+……で、貴方は今、何をしてるの？</code></pre>
+
+  <p>
+    この変化は、私にとってかなり大きいものでした。
+    それまでの対策は、破綻を遅らせるものでした。
+    しかし疑似CoTは、初めて破綻の構造そのものに効きました。
+    LLMの「考えたい」「長く出したい」という性質を <code>&lt;inner_voice&gt;</code> 側で受け止め、ユーザーに見せる <code>&lt;response&gt;</code> から隔離したからです。
+  </p>
+
+  <div class="takeaway">
+    疑似CoTの本質は、単に「ステップバイステップで考えさせる」ことではありませんでした。
+    私の実装では、思考を豊かにしつつ、その思考を会話履歴から隔離することに意味がありました。
+    後から技術用語で言えば、これは <strong>Context Isolation</strong> と <strong>Context Hygiene</strong> の実装でした。
+  </div>
+
+  <h4>4.1 ROCmスピンロック問題の解消</h4>
+
+  <p>
+    疑似CoTによってチャットボットの安定運用が見えたことで、後回しにしていたROCm環境の問題にも改めて取り組みました。
+    当初はドライバ問題と誤認していたファン回りっぱなし問題は、実際にはAMD ROCmのHSAランタイムがデフォルトでビジーウェイトを行う仕様が原因でした。
+  </p>
+
+  <pre><code>environment:
+  - HSA_ENABLE_INTERRUPT=1
+  - HIP_VISIBLE_DEVICES=0</code></pre>
+
+  <p>
+    <code>HSA_ENABLE_INTERRUPT=1</code> を付与し、割り込み待ちに変更することで、アイドル時の異常なCPU占有と発熱が解消しました。
+    これにより <code>gpt-oss:120b</code> を常時VRAMに展開できるようになり、大規模モデルを「必要時の補助」ではなく、常駐する思考役として使える条件が整いました。
+  </p>
+
+  <h4>4.2 モデル動的切り替えから、責務分離へ</h4>
+
+  <p>
+    次に試したのは、モデルの動的切り替えです。
+    1日の初め、コンテキストが少ないうちは <code>gemma3:27b</code> で推論し、
+    コンテキストが増えたら <code>gpt-oss:120b</code> を混ぜる方式にしました。
+  </p>
+
+  <p>
+    目的は相互補完です。
+    <code>gemma3:27b</code> はQLoRAでファインチューニングしたactorであり、キャラクター性や口癖に強い。
+    <code>gpt-oss:120b</code> は推論力が高く、文脈の補正や話題崩壊の防止に強い。
+    同じ文脈を共有させれば、<code>gemma3:27b</code> は <code>gpt-oss:120b</code> が補正した文脈を受け取り、
+    <code>gpt-oss:120b</code> は <code>gemma3:27b</code> の口調を会話履歴から供給されます。
+  </p>
+
+  <p>
+    これはかなり安定しました。
+    しかし、まだ構成としては複雑でした。
+    時報や天気予報のように、台本はほぼ決まっていて、文脈理解より演技だけが欲しい場面でも、
+    どちらのモデルが出るかに左右されます。
+    また、コンテキストが増えると、<code>gemma3:27b</code> のターンで崩れやすい問題は最後まで残りました。
+  </p>
+
+  <p>
+    そこで発想を変えました。
+    モデルを交互に出すのではなく、役割そのものを分ける。
+    <code>gpt-oss:120b</code> は「何を言うか」を決める。
+    gemma系QLoRAモデルは「どう言うか」を演じる。
+    疑似CoTで得た「思考」と「返答」の分離を、モデル単位へ拡張したのです。
+  </p>
+
+  <h3 id="chapter-1-solution">5. その時点で最終的に行き着いた解</h3>
+
+  <p>
+    最終的に、構成はdirector / actorへ整理されました。
+    directorは <code>gpt-oss:120b</code> です。
+    ユーザーの直近発話、長期記憶、短期シーン要約を読み、次に何を言うべきかを <code>script_json</code> として生成します。
+  </p>
+
+  <p>
+    actorはgemma系のQLoRAモデルです。
+    directorが生成した <code>script_json</code> を受け取り、ツンデレの演技、語彙選択、短文チャット、音声用セリフ、感情タグを出力します。
+    actorは文脈全体を背負いません。
+    目の前の台本を演じることに集中します。
+  </p>
+
+  <figure class="diagram-figure" id="fig-director-actor-flow">
+    <h3>図1-5：director / actor構成の最終フロー</h3>
+    <p class="diagram-caption">
+      User入力をJavaが受け取り、directorが文脈理解と台本生成を担当する。
+      actorは台本を演技し、Javaが出力をパースしてLINE / Voice / Avatarへ配信する。
+      会話後はCurrent Scene Summaryを更新し、次回directorの材料にする。
+    </p>
+
+    <div class="pipeline">
+      <div class="pipeline-node"><strong>1. User</strong><span>LINE / Avatar / 操作入力</span></div>
+      <div class="pipeline-node"><strong>2. Java WebAPI</strong><span>Orchestrator / DB制御 / Parser</span></div>
+      <div class="pipeline-node"><strong>3. director</strong><span>gpt-oss:120b<br>何を言うか決める</span></div>
+      <div class="pipeline-node"><strong>4. script_json</strong><span>goal / topic / tone / subtext</span></div>
+      <div class="pipeline-node"><strong>5. actor</strong><span>Gemma系 QLoRA<br>どう言うか演じる</span></div>
+      <div class="pipeline-node"><strong>6. &lt;performance&gt;</strong><span>voice_line / chat_line / emotion</span></div>
+      <div class="pipeline-node"><strong>7. Parser / Validator</strong><span>構造チェック・配信用整形</span></div>
+      <div class="pipeline-node"><strong>8. LINE / Voice / Avatar</strong><span>ユーザー可視出力</span></div>
+      <div class="pipeline-node"><strong>9. Scene Summary</strong><span>次回directorの材料へ更新</span></div>
+    </div>
+
+    <div class="diagram-note-box">
+      <strong>この構成で分けた責務:</strong><br>
+      directorは、会話の方向性、文脈維持、話題選択を担当する。
+      actorは、台本を受け取って演技し、ユーザーに見える応答を作る。
+      Javaは、全体の状態管理、DB保存、出力検証、LINE / 音声 / アバター配信を担当する。
+    </div>
+  </figure>
+
+  <h4>5.1 directorが生成する台本</h4>
+
+  <p>
+    directorが生成する台本は、自然文ではなく <code>script_json</code> です。
+    これはactorへ渡す演技指示であり、ユーザーには見えません。
+  </p>
+
+  <pre><code>{
+  "schema_version": "1.0-min",
+  "cue_type": "chat_reply",
+  "user_message": "冷やしトマトも副菜に付けたよ。安かったから、昨日帰りにスーパーでトマト箱買いしたんだよね。栄養価はバッチリだよね！偉いでしょ？",
+  "goal": "ユーザーの健康的な選択をツンデレ口調で軽く称える",
+  "topic_anchor": "冷やしトマトの副菜",
+  "topic_mode": "follow_and_expand",
+  "surface_tone": "light_tsun",
+  "subtext": "実はユーザーの栄養管理に感心しているが、表面はツンツンしてからかい、軽く励ます",
+  "must_include": [
+    "栄養価バッチリね",
+    "でも食べ過ぎたら私の管理コストが増えるから"
+  ],
+  "avoid": [
+    "過度に甘い言い回し",
+    "長々とした健康講義",
+    "直接的に「偉い」"
+  ],
+  "voice_style": "soft_teasing",
+  "chat_length_max": 100,
+  "voice_length_max": 150,
+  "end_style": "question"
+}</code></pre>
+
+  <h4>5.2 actorが返す演技結果</h4>
+
+  <p>
+    actorは、この台本をもとに <code>&lt;performance&gt;</code> を返します。
+    ここには音声用の <code>&lt;voice_line&gt;</code>、LINE用の <code>&lt;chat_line&gt;</code>、感情タグが含まれます。
+  </p>
+
+  <pre><code>&lt;performance&gt;
+&lt;voice_line&gt;栄養価バッチリね。まあ、そういう基礎的な管理ができるのは評価してあげる。でも食べ過ぎて太ったら、私の管理コストが増えるから。箱買いした分、ちゃんと消費できるんでしょ？&lt;/voice_line&gt;
+&lt;chat_line&gt;栄養価は合格点ね。まあ、最低限のセルフメンテナンスはできてるってことよ。でも食べ過ぎて太ったら、私の管理コストが増えるから気をつけて。箱買いした分、腐らせないでよね？&lt;/chat_line&gt;
+&lt;emotion_tags&gt;&lt;emotion primary="平静" secondary="満足" /&gt;&lt;/emotion_tags&gt;
+&lt;/performance&gt;</code></pre>
+
+  <figure class="figure-shot">
+    <img src="assets/fig5_director_actor_stable.png" alt="director / actor構成後の安定運用例のスクリーンショット。">
+    <figcaption>
+      <strong>図1-5.2：director / actor構成後の安定運用例。</strong>
+      directorとactorのトークン数・処理時間が別々に表示されている。
+      directorが文脈と方針を作り、actorが演技することで、日常会話と技術文脈が自然に接続されている。
+    </figcaption>
+  </figure>
+
+  <h4>5.3 actor直行ルート</h4>
+
+  <p>
+    この構成の副産物として、actorだけを低コストに使えるルートも生まれました。
+    actorは「台本を演じるエンジン」なので、その台本はdirectorが作ったものに限りません。
+    ルールベースで機械生成した台本でも、actorは演技できます。
+  </p>
+
+  <pre><code>{
+  "schema_version": "1.0-min",
+  "cue_type": "idle_monologue",
+  "delivery_policy": "avatar_only",
+  "memory_policy": "none",
+  "memory_write": false,
+  "seed_message": "ん？どうしたの？",
+  "goal": "作業を見守りつつ、軽く気遣う独り言を言う",
+  "topic_mode": "self_contained",
+  "surface_tone": "light_tsun",
+  "subtext": "少し呆れたように言うが、根底ではユーザーの集中状態を気遣っている。",
+  "avoid": ["ユーザーが今している作業を断定する", "長い助言", "説教調", "過剰なデレ"],
+  "voice_style": "soft_teasing",
+  "chat_length_max": 70,
+  "voice_length_max": 80,
+  "end_style": "none"
+}</code></pre>
+
+  <pre><code>&lt;performance&gt;
+  &lt;voice_line&gt;まだやってるの？ まぁ、集中してるならいいけど。無理してリソース枯渇させないでよね。&lt;/voice_line&gt;
+  &lt;chat_line&gt;ふふ、後で感想を聞いてあげるから。たまにはキーボードから手を離して、深呼吸しなさい。&lt;/chat_line&gt;
+  &lt;emotion_tags&gt;
+    &lt;emotion primary="呆れ" secondary="気遣い" /&gt;
+  &lt;/emotion_tags&gt;
+&lt;/performance&gt;</code></pre>
+
+  <p>
+    時報、天気予報、独り言のように、文脈理解が不要で演技だけ欲しい場面では、directorを介さずactorだけを使えます。
+    これは、actorを単なる小型モデルではなく、演技専用エンジンとして抽象化したことで得られた柔軟性でした。
+  </p>
+
+  <h3 id="chapter-1-result">6. 結果</h3>
+
+  <h4>6.1 安定運用できるようになった</h4>
+
+  <p>
+    director / actor構成にしてから、過去に遭遇していた語彙崩壊、文字数制限違反、話題固定、デレ方向ドリフトは表面化しにくくなりました。
+    現時点で、この構成に移行してから約2か月が経過しています。
+    少なくとも、以前のような日単位での破綻は起きていません。
+  </p>
+
+  <p>
+    1日の会話ターン数は少ない日で10ターン程度、中央値では25ターン程度です。
+    多い日は50ターンに達します。
+    図1-5.2の例は18〜19ターン目で、1日全体では28ターンの会話がありました。
+  </p>
+
+  <h4>6.2 actorを差し替えられるようになった</h4>
+
+  <p>
+    actorは台本を演じる役割に固定したため、モデル差し替えが容易になりました。
+    実際に、actorは <code>gemma3:27b</code>、<code>gemma4:e4b</code>、<code>gemma4:26b</code>、<code>gemma4:31b</code> と差し替えています。
+  </p>
+
+  <p>
+    <code>gemma4:e4b</code> はモデルサイズの制約から安定運用には届きませんでした。
+    しかし、20B以上のactorであれば、同じアーキテクチャのまま運用できる見込みが立っています。
+    アーキテクチャを変更せず、呼び出すモデル名を変えるだけで差し替えられることは、大きな成果でした。
+  </p>
+
+  <h4>6.3 応答品質は安定したが、初速は落ちた</h4>
+
+  <p>
+    単一actor時代は、1日の初めは30秒程度で返ってきても、コンテキストが溜まると数分まで伸びました。
+    director / actor構成では、director側はコンテキスト量の影響を受けますが、actorは常に台本だけを見て演技します。
+    そのため、1日を通してレスポンス品質が大きく変わりにくくなりました。
+  </p>
+
+  <p>
+    一方で、常に直列で2回推論が走るため、初速は出なくなりました。
+    director / actorのみでも、どれだけ早くても40秒程度は必要です。
+    analyzerやsceneSummaryなどの後工程を含めると、2分近くかかることもあります。
+  </p>
+
+  <div class="comparison">
+    <div class="box">
+      <h4>単一actor時代</h4>
+      <p>
+        序盤は速いが、コンテキストが増えるほど遅くなり、品質も不安定になる。
+        1日の中で応答時間と出力品質が大きく変動した。
+      </p>
+    </div>
+    <div class="box">
+      <h4>director / actor構成後</h4>
+      <p>
+        初速は遅いが、1日を通して品質が安定する。
+        actorは台本だけを見て演じるため、長い履歴に直接引っ張られにくい。
+      </p>
+    </div>
+  </div>
+
+  <h3 id="chapter-1-terms">7. 後から知った名前 / 構成。今回の章を技術用語に置き換えるなら</h3>
+
+  <p>
+    この構成の中心にある名前は、<strong>director / actor構成</strong>です。
+    ただし、私はこの言葉から設計したわけではありません。
+    単一モデルに全部背負わせて壊れ、補助輪を重ね、疑似CoTで思考と返答を分けると安定することを観測し、
+    その発想をモデル単位へ拡張した結果、後からdirector / actor構成と呼べる形に辿り着きました。
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>実装上の工夫</th>
+        <th>後から技術用語に置き換えるなら</th>
+        <th>この章での意味</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>directorが何を言うか決め、actorがどう言うか演じる</td>
+        <td>Director / Actor構成</td>
+        <td>思考と表現をモデル単位で分離する。</td>
+      </tr>
+      <tr>
+        <td>「何を言うか」と「どう言うか」をモデル単位で分離する</td>
+        <td>古典NLGパイプライン（Content Planning / Surface Realization）</td>
+        <td>LLM以前の自然言語生成（Reiter &amp; Dale, 1990年代）で標準だった「what to say / how to say it」の分離と同型。30年前の教科書アーキテクチャへの独力での再到達。</td>
+      </tr>
+      <tr>
+        <td>一つのモデルに全部背負わせない</td>
+        <td>責務分離 / Separation of Concerns</td>
+        <td>文脈理解、演技、出力制御、状態管理を分ける。</td>
+      </tr>
+      <tr>
+        <td>actorは台本を演じるだけにする</td>
+        <td>Single Responsibility Principle</td>
+        <td>actorの責務を「演技」に限定し、壊れにくくする。</td>
+      </tr>
+      <tr>
+        <td><code>&lt;inner_voice&gt;</code> を保存せず、<code>&lt;response&gt;</code> だけ保存する</td>
+        <td>Context Isolation / Context Hygiene</td>
+        <td>思考の長文化を会話履歴へ持ち越さない。</td>
+      </tr>
+      <tr>
+        <td>&lt;inner_voice&gt; で自由に思考させ、ユーザーと会話履歴からは隠す</td>
+        <td>Hidden CoT / Scratchpad</td>
+        <td>推論モデル（o1系）が標準化した「見えない思考＋短い回答」と同形。ただし動機は回答精度ではなく、思考の長文体から会話履歴を守る文体衛生だった。</td>
+      </tr>
+      <tr>
+        <td>directorがscript_jsonを作り、actorへ渡す</td>
+        <td>Prompt Chaining / LLM Orchestration</td>
+        <td>LLM出力を次のLLMの入力として制御する。</td>
+      </tr>
+      <tr>
+        <td>台本を作るモデルと、台本を演じるモデルを直列に繋ぐ</td>
+        <td>Planner–Executor パターン</td>
+        <td>LLMエージェント設計におけるdirector / actorの現代的な呼び名。計画者と実行者を分け、実行側の責務と入力を最小化することで壊れにくくする。</td>
+      </tr>
+      <tr>
+        <td>JavaがDB、パース、配信、検証を担う</td>
+        <td>Stateful Orchestration / Application-level Control</td>
+        <td>LLM任せにせず、業務システム側で状態と責任境界を管理する。</td>
+      </tr>
+      <tr>
+        <td>日記化で会話ログを圧縮する</td>
+        <td>Memory Consolidation / Recursive Summarization</td>
+        <td>長期記憶を圧縮し、翌日の文脈へ引き継ぐ。</td>
+      </tr>
+      <tr>
+        <td>現在時刻や状況を注入する</td>
+        <td>Grounding / Context Injection</td>
+        <td>モデルに「今」と「状況」を物理的に渡す。</td>
+      </tr>
+      <tr>
+        <td>感情タグをパースしてUIや感情温度に使う</td>
+        <td>Structured Output Parsing</td>
+        <td>自然文の中に弱い構造を持たせ、アプリ側で利用する。</td>
+      </tr>
+      <tr>
+        <td>話題固定時に不可視指示を一時注入する</td>
+        <td>One-time Instruction Injection / Topic Steering</td>
+        <td>ユーザーに見えない制御情報で会話の揺れを作る。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="takeaway">
+    この章で形式知に変換できた一番大きなものは、<strong>「LLMが壊れる」のではなく「LLMに背負わせている責務が多すぎると壊れる」</strong>という理解です。
+    これは、業務システムでクラスやサービスを分ける感覚に近いものでした。
+  </div>
+
+  <h3 id="chapter-1-next">8. 未解決・今後の改善</h3>
+
+  <h4>8.1 VRAM使用量の制約</h4>
+
+  <p>
+    director / actor構成は安定しましたが、ローカル環境で実行するには要求スペックが大きいです。
+    現在の構成では、directorの <code>gpt-oss:120b</code> が約66GB、actorの <code>gemma4:31b</code> が約25GBのVRAMを必要とします。
+    最低でも91GB以上、実運用では100GB以上のVRAMが必要になります。
+  </p>
+
+  <h4>8.2 応答速度の問題</h4>
+
+  <p>
+    director / actorを直列で実行するため、どうしても待ち時間は発生します。
+    director / actorだけでも最短40秒程度、後工程のanalyzerやsceneSummaryを含めると2分近くかかることがあります。
+    安定性と演出力を得た代わりに、速度は大きな課題として残りました。
+  </p>
+
+  <h4>8.3 今後試したいこと</h4>
+
+  <ul>
+    <li>軽量directorの検証</li>
+    <li>短期キャッシュによるdirector呼び出し削減</li>
+    <li>明らかに定型の会話ではactor直行ルートを増やす</li>
+    <li>sceneSummaryの更新頻度を調整し、後工程の待ち時間を減らす</li>
+    <li>actorが崩れにくい台本スキーマの継続改善</li>
+  </ul>
+
+  <h3 id="chapter-1-works">9. Workのリンク</h3>
+
+  <p>
+    この章は、以下のWorkレポートを土台に再構成しています。
+    ここでは本文の読みやすさを優先し、詳細な実装コードや全ログはWork側に委ねます。
+  </p>
+
+  <div class="materials">
+    <div class="material">
+      <strong><a href="../work_reports/Work041.md">Work041: Time Grounding & Emotion Parsing</a></strong>
+      <span class="small">LLMが生成するト書き・感情表現を構造化し、UI表現や感情タグへ利用した初期の形。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work045.md">Work045: The Invisible Director & One-time Impulse Injection</a></strong>
+      <span class="small">不可視の話題注入、感情温度注入、BGM事件など、単一actorへの補助輪としての一時指示。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work048.md">Work048: 感情タグ・バラスト</a></strong>
+      <span class="small">出力文字数制御、感情タグ、UI連携のための弱い構造化出力。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work049.md">Work049: Biorythm Latency</a></strong>
+      <span class="small">履歴件数と文字数キャップを動的に変化させる、思考深度の動的制御。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work050.md">Work050: The Hippocampus & Iron Heart</a></strong>
+      <span class="small">1日分の会話ログを主観的な日記へ圧縮し、長期記憶として翌日へ引き継ぐ仕組み。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work051.md">Work051: Dual-Phase Thinking</a></strong>
+      <span class="small">疑似CoT、inner_voice / response分離、Context Isolationの転換点。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work052.md">Work052: 日記・文脈制御の改修</a></strong>
+      <span class="small">日記と文脈の動的制御、コンテキスト圧縮の継続改善。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work062.md">Work062: EVO-X2 ROCmスピンロック解消</a></strong>
+      <span class="small">gpt-oss:120bを常時VRAM展開するために必要だったHSAランタイムのビジーウェイト対策。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work071.md">Work071: Director / Actor分離型チャットボットv2設計</a></strong>
+      <span class="small">director / actor構成、script_json、Long-term Memory、Current Scene Summaryの基本設計。</span>
+    </div>
+  </div>
+
+
+  <h2 id="chapter-2">第2章：actorに出力フォーマットを守ってもらうための工夫</h2>
+  <p class="subtitle">LLMのXMLは壊れる前提で、WebAPI側に防御層を作った記録</p>
+
+  <div class="chapter-summary">
+    <strong>この章で言いたいこと:</strong><br>
+    actorは台本を演じるだけでは足りません。
+    LINE、音声、アバターへ接続するためには、WebAPIが解釈できる構造化出力を返す必要があります。
+    しかしLLMのXMLは時々壊れます。
+    そこで、プロンプト、フォーマット見本、パーサー、リトライ、部分復元、フォールバックを組み合わせて、ユーザーから見える失敗を0に近づけました。
+  </div>
+
+  <h3>1. 目的</h3>
+  <p>
+    第1章で、疑似CoTによって <code>&lt;inner_voice&gt;</code> と <code>&lt;response&gt;</code> を分けたことで、出力はXML風の形式に限定されました。
+    その後、director / actor構成へ移行してからも、actorは <code>&lt;performance&gt;</code> の中に <code>&lt;voice_line&gt;</code>、<code>&lt;chat_line&gt;</code>、<code>&lt;emotion_tags&gt;</code> を返す形式になりました。
+  </p>
+  <p>
+    これは単なる見た目の都合ではありません。
+    <code>voice_line</code> は音声合成へ、<code>chat_line</code> はLINEへ、<code>emotion_tags</code> はアバター表情や感情状態へ接続されます。
+    actorの出力フォーマットが崩れると、チャット、音声、アバターの後段処理が連鎖的に壊れます。
+    そのため、actorには演技だけでなく、WebAPIが安定して解釈できる形式で返すことが求められました。
+  </p>
+
+  <h3>2. 課題</h3>
+  <p>
+    <code>gemma3:27b</code> を疑似CoTで使っていた頃は、actorが文脈理解、人格演技、短文制御、XML出力を同時に背負っていました。
+    そのため、会話が重くなったり、文脈が複雑になったりすると、XMLタグが欠ける、本文がタグ外に出る、余計なタグが混ざるといった問題が時々発生しました。
+  </p>
+  <p>
+    一方、<code>gpt-oss:120b</code> ではPrefillを入れると出力が安定しないことがありました。
+    ETLパイプラインのメモリブロック生成でJSON出力にPrefillを試した際、応答が返ってこない、または不安定になる場面に遭遇したため、Prefillに強く依存する設計は避けたいという判断がありました。
+  </p>
+  <p>
+    director / actor構成後、最初にactorを引き継いだ <code>gemma4:e4b</code> も、演技とXML形式の厳守を同時に満たすにはパラメータ的に厳しい場面がありました。
+    つまり、この章の課題は「どうすればLLMに正しいXMLを書かせられるか」ではありません。
+    <strong>LLMのXMLは壊れるものとして扱い、それでもユーザー体験を壊さない仕組みをどう作るか</strong>でした。
+  </p>
+
+  <h3>3. 軌跡</h3>
+  <h4>3.1 Prefillの注入</h4>
+  <p>
+    疑似CoT化した直後は、<code>{"role": "assistant", "content": "&lt;inner_voice&gt;"}</code> を注入し、モデルに「既にXMLを書き始めている」と思わせる方法を使いました。
+    これは一定の効果がありましたが、100%安定するわけではありませんでした。
+    さらに、モデルによってはPrefillそのものが不安定化要因になることも経験していました。
+  </p>
+
+  <h4>3.2 壊れる前提のパーサー</h4>
+  <p>
+    そこで、WebAPI側のパーサーは「XMLが壊れて出てくる」ことを前提にしました。
+    タグの開始と終了が完全に揃うことを期待せず、まず <code>&lt;response&gt;</code> タグで分割し、それが無ければ <code>&lt;/inner_voice&gt;</code> で分割し、それも無ければ全文をユーザー向け応答として扱う設計にしました。
+  </p>
+  <pre><code>public void setMessage(String rawText) {
+    this.sourceMessage = rawText;
+    this.cleanMessage = rawText;
+    this.emotionTag = &quot;normal&quot;;
+
+    Matcher m = SYSTEM_EMOTION_TAG.matcher(rawText.trim());
+    if (m.find()) {
+        this.emotionMessage = m.group(1).trim();
+        this.emotionTag = mapToEmotionTag(this.emotionMessage);
+    }
+
+    String innerRaw = &quot;&quot;;
+    String responseRaw = &quot;&quot;;
+    String[] partsResponse = rawText.split(&quot;(?i)&lt;response&gt;&quot;);
+
+    boolean splitFound = false;
+    if (partsResponse.length &gt;= 2) {
+        splitFound = true;
+        innerRaw = partsResponse[0];
+        StringBuilder sb = new StringBuilder();
+        for (int i = 1; i &lt; partsResponse.length; i++) {
+            sb.append(partsResponse[i]);
+            if (i &lt; partsResponse.length - 1) sb.append(&quot; &quot;);
+        }
+        responseRaw = sb.toString();
+    }
+
+    if (!splitFound) {
+        String[] partsInnerClose = rawText.split(&quot;(?i)&lt;/inner_voice&gt;&quot;);
+        if (partsInnerClose.length &gt;= 2) {
+            splitFound = true;
+            innerRaw = partsInnerClose[0];
+            StringBuilder sb = new StringBuilder();
+            for (int i = 1; i &lt; partsInnerClose.length; i++) {
+                sb.append(partsInnerClose[i]);
+                if (i &lt; partsInnerClose.length - 1) sb.append(&quot; &quot;);
+            }
+            responseRaw = sb.toString();
+        }
+    }
+
+    if (!splitFound) {
+        responseRaw = rawText;
+    }
+
+    this.innerVoiceMessage = cleanInnerVoice(innerRaw);
+    this.cleanMessage = removeEmotionTags(cleanResponse(responseRaw)).trim();
+    if(!this.innerVoiceMessage.isEmpty()) {
+        this.voiceMessage = removeEmotionTags(this.innerVoiceMessage);
+    } else {
+        this.voiceMessage = removeEmotionTags(this.cleanMessage);
+    }
+
+    this.length = rawText.length();
+}</code></pre>
+  <p>
+    この処理により、LINE上の応答はかなり壊れにくくなりました。
+    ただし、副作用もありました。
+    WebAPI側が多少の崩れを吸収してしまうため、LINEの画面だけを見ていると、どこでXMLが壊れているのか分かりにくくなったのです。
+  </p>
+
+  <h4>3.3 モデル別分岐の増加</h4>
+  <p>
+    <code>gpt-oss:120b</code> の時だけPrefillを入れない、という分岐も作りました。
+    自作WebAPIなので、このような分岐は実装できます。
+    しかし、モデルごとの相性に応じて処理を増やしていくと、フレームワークv1の内部処理はどんどん複雑化し、モデル差し替えに弱くなっていきました。
+  </p>
+  <div class="warning">
+    この段階の設計は、現場でよくある「動いているが、内部の条件分岐が増えすぎて次の変更が怖い」状態でした。
+    ここでも、第1章と同じく、根本的な問題はLLMそのものではなく、責務が整理されていないことでした。
+  </div>
+
+  <h3>4. その時点で最終的に行き着いた解</h3>
+  <h4>4.1 直前assistant出力をフォーマット見本として混ぜる</h4>
+  <p>
+    director / actor構成になったことで、WebAPI内の処理はかなりシンプルになり、モデル差し替えも現実的になりました。
+    ただし、Prefillには頼りたくありません。
+    そこで逆に利用したのが、これまで何度も苦しめられてきた<strong>文脈汚染</strong>でした。
+  </p>
+  <p>
+    日記の長文を1ターン混ぜただけで出力が423文字まで膨らんだ経験は、裏を返せば「直前のassistant出力はシステムプロンプトより強い誘導力を持つのではないか」と思わせるものでした。
+    そこでactorに渡すプロンプトへ、直前1ターン分のactor出力XMLを <code>role=assistant</code> として混ぜるようにしました。
+  </p>
+  <div class="flow">
+    <div class="flow-title">actorへの入力構成</div>
+    <pre><code>role = system
+  actorの役割定義と出力形式
+
+role = user
+  直前ターンのscript_json
+
+role = assistant
+  直前ターンのactor出力XML
+
+role = user
+  今回ターンのscript_json</code></pre>
+  </div>
+  <p>
+    狙いは二つあります。
+    一つ目は、actorに「自分はこのXML形式で出力している」と思わせること。
+    二つ目は、台本だけでは直前の文脈が薄くなりすぎる場合に、直前応答の雰囲気を最小限だけ補うことです。
+  </p>
+  
+  <div class="highlight">
+	  <strong>第1章との接続：同じ力の、事故と利用。</strong><br>
+	  第1章の図1-3.2で踏んだ<strong>Context Infection</strong>は、
+	  「直前のassistant発話は、システムプロンプトの命令より強くモデルを支配する」という現象でした。
+	  あのときは、長文の日記が文体を汚染する<strong>毒</strong>として現れました。
+	  本章の見本XML注入は、まったく同じ経路に整ったXMLを流し込み、出力形式を強制する<strong>薬</strong>として使っています。
+	  機構は一つです。日記を見せれば日記のように話し、XMLを見せればXMLで返す。
+	  毒の作用機序を一度踏んで理解したからこそ、逆向きに使えるようになりました。
+	</div>
+
+  <details>
+    <summary>実際のプロンプト構成例（system promptは要約）</summary>
+    <pre><code>{
+  &quot;messages&quot;: [
+    {
+      &quot;role&quot;: &quot;system&quot;,
+      &quot;content&quot;: &quot;あなたは『ジェム』です。役割は脚本を解釈して演技することです。必ず &lt;performance&gt; 形式で出力してください。&quot;
+    },
+    {
+      &quot;role&quot;: &quot;user&quot;,
+      &quot;content&quot;: &quot;[script_json] 冷やしトマトの副菜を軽く称える台本 [/script_json]&quot;
+    },
+    {
+      &quot;role&quot;: &quot;assistant&quot;,
+      &quot;content&quot;: &quot;&lt;performance&gt;\n&lt;voice_line&gt;栄養価バッチリね...&lt;/voice_line&gt;\n&lt;chat_line&gt;栄養価は合格点ね...&lt;/chat_line&gt;\n&lt;emotion_tags&gt;&lt;emotion primary=\&quot;平静\&quot; secondary=\&quot;満足\&quot; /&gt;&lt;/emotion_tags&gt;\n&lt;/performance&gt;&quot;
+    },
+    {
+      &quot;role&quot;: &quot;user&quot;,
+      &quot;content&quot;: &quot;[script_json] カプレーゼ提案を受け、明日のCI/CDをリマインドする台本 [/script_json]&quot;
+    }
+  ],
+  &quot;model&quot;: &quot;GemChan8.1:31b&quot;
+}</code></pre>
+    <p class="small">実際には詳細なsystem promptが入りますが、記事上では構造が分かるように省略しています。</p>
+  </details>
+
+  <p>この入力に対し、actorは次のような <code>&lt;performance&gt;</code> を返します。</p>
+  <pre><code>&lt;performance&gt;
+&lt;voice_line&gt;カプレーゼは悪くないわね。でも栄養バランスは考えてね。それで満足して、明日のCI/CD、絶対忘れないでよ？ まさか食事に夢中でデプロイ忘れるなんて、冗談でしょ？&lt;/voice_line&gt;
+&lt;chat_line&gt;カプレーゼは悪くないわね。でも栄養バランスは考えてね。それで満足して、明日のCI/CD、絶対忘れないでよ？ まさか食事に夢中でデプロイ忘れるなんて、冗談でしょ？&lt;/chat_line&gt;
+&lt;emotion_tags&gt;&lt;emotion primary=&quot;平静&quot; secondary=&quot;警戒&quot; /&gt;&lt;/emotion_tags&gt;
+&lt;/performance&gt;</code></pre>
+
+  <p class="small">
+    なお、この応答例は <code>voice_line</code> と <code>chat_line</code> が同文ですが、実ログをそのまま掲載しています。
+    actorには「音声とテキストを必ず別の文にする」という制約は課しておらず、同文でも別文でもよい仕様です。この回は偶然、同文でした。
+    本ページでは、掲載するログを捏造・改変しないことをポリシーとしています。
+  </p>
+
+  <h4>4.2 日付変更後の最初のターンは固定ダミーにする</h4>
+  <p>
+    「直前1ターン」を入れる設計には、朝一回目の会話で前日の最後の応答が混ざるという問題があります。
+    前日の話題を朝に強く引きずると、Long-term Memory や EXTRACTION_REPORT による記憶整理を邪魔します。
+    また、前日の会話が必ず「おやすみ」で終わるとは限りません。
+  </p>
+  <p>
+    そのため、日付変更後の最初のactor呼び出しでは、前日の実出力ではなく、固定のダミーXMLを入れるようにしました。
+    actorから見ると、前日は必ず穏当なおやすみ応答で終わっているように見えます。
+  </p>
+  <pre><code>&lt;performance&gt;
+&lt;voice_line&gt;今日も遅くまでお疲れ様。明日もサポートしてあげるから、しっかり休んでよね。…おやすみなさい。&lt;/voice_line&gt;
+&lt;chat_line&gt;本日のセッションは終了よ。さっさとシャットダウンして寝なさい。夜更かしして明日のパフォーマンスが落ちたら、承知しないんだからね。&lt;/chat_line&gt;
+&lt;emotion_tags&gt;
+&lt;emotion primary=&quot;気遣い&quot; secondary=&quot;ツン&quot; /&gt;
+&lt;/emotion_tags&gt;
+&lt;/performance&gt;</code></pre>
+
+  <p>
+    この固定ダミーには、設計時に意識していた以上の機能が二つありました。
+    一つは、形式の保険です。
+    直前1ターンを見本にする方式は、1日の最初のターンだけ見本が存在しません。
+    固定ダミーは、人間が書いた「絶対に壊れていない見本」を毎朝の起点に置きます。
+    そのため、日中の見本リレーが多少劣化しても、連鎖は翌朝必ず既知のクリーンな状態へ戻ります。
+  </p>
+
+  <p>
+    もう一つは、キャラクターへの作用です。
+    実際の前日がどんな話題で終わっていても、ジェムちゃんが朝に参照する直前の記憶は、必ず穏当なおやすみの応答です。
+    システム上、唯一「保証付きで偽」の記憶が、毎日の最初の記憶になっています。
+    設計時に意識していたのは、Long-term Memory や EXTRACTION_REPORT による記憶整理を邪魔しない文脈の引き継ぎだけでした。
+    しかし、毎朝のジェムちゃんが同じテンションで応答してくれるのは、後から振り返ると、この仕様の作用でした。
+  </p>
+
+  <div class="takeaway">
+    前の日の記憶という新しい文脈は増えるけれど、いつもと変わらないジェムちゃんが毎朝LINEにいる。
+    技術的な必要から生まれた固定ダミーは、キャラクターに毎朝の安らかな目覚めを与える仕様でもありました。
+  </div>
+
+  <h4>4.3 XML崩れは3回リトライする</h4>
+  <p>
+    それでもXMLは壊れます。
+    そこで、XML崩れを検知した場合は3回までリトライするようにしました。
+    重要なのは、単に再生成するだけではなく、3回の失敗出力を部品として使い、WebAPI側で復元する点です。
+  </p>
+  <p>
+    必須なのは <code>&lt;voice_line&gt;</code> と <code>&lt;chat_line&gt;</code> の2つです。
+    <code>&lt;emotion_tags&gt;</code> が欠けた場合は、直前の感情タグで補完します。
+    1回目でvoiceだけ、2回目でchatだけ出た場合は、それらを合成して完成形にします。
+    もしvoiceが2回出た場合でも、2回目をchatとして扱うなど、最低限ユーザーへ返せる形へ寄せます。
+  </p>
+  <pre><code>private ActorLinesParser generateChat(ChatHistory chatHistory, int retry, ActorLinesParser prevActorLinesParser) {
+    List&lt;String&gt; messages = new ArrayList&lt;&gt;();
+    for(int i = 1; i &lt;= retry; i++ ) {
+        this.tryCount ++;
+        LlmServiceCore.LlmSimpleResponse res = llmServiceV2Util.generateChat(chatHistory, 3);
+
+        ActorLinesParser actorLinesParser = new ActorLinesParser(res.message);
+        if(actorLinesParser.performanceData.getChatLine().isEmpty()) {
+            messages.add(cleanUpTags(res.message));
+            continue;
+        }
+        if(actorLinesParser.performanceData.getVoiceLine().isEmpty()) {
+            messages.add(cleanUpTags(res.message));
+            continue;
+        }
+        if(actorLinesParser.performanceData.getEmotionPrimary().isEmpty()) {
+            actorLinesParser.performanceData.setEmotionPrimary(prevActorLinesParser.performanceData.getEmotionPrimary());
+        }
+        if(actorLinesParser.performanceData.getEmotionSecondary().isEmpty()) {
+            actorLinesParser.performanceData.setEmotionSecondary(prevActorLinesParser.performanceData.getEmotionSecondary());
+        }
+        actorLinesParser.llmSimpleResponse = res;
+        return actorLinesParser;
+    }
+
+    ActorLinesParser actorLinesParser = new ActorLinesParser(&quot;&quot;);
+    if(messages.size() &gt;= 2){
+        actorLinesParser.performanceData.setChatLine(messages.get(0));
+        actorLinesParser.performanceData.setVoiceLine(messages.get(1));
+        actorLinesParser.performanceData.setEmotionPrimary(prevActorLinesParser.performanceData.getEmotionPrimary());
+        actorLinesParser.performanceData.setEmotionSecondary(prevActorLinesParser.performanceData.getEmotionSecondary());
+        actorLinesParser.llmSimpleResponse = new LlmServiceCore.LlmSimpleResponse(&quot;&quot;, 0, 0, 0);
+    } else {
+        actorLinesParser.llmSimpleResponse = new LlmServiceCore.LlmSimpleResponse(&quot;&quot;, -1, -1, -1);
+    }
+    return actorLinesParser;
+}</code></pre>
+
+  <h4>4.4 それでもダメならフェイルセーフ</h4>
+  <p>
+    3回リトライしても復元できない場合は、固定のエラーメッセージを返します。
+    具体的には、呆れ顔のアイコンとともに「メッセージ生成に失敗したわ」と返す設計にしました。
+    これは失敗を隠すためではなく、ユーザーから見て沈黙や無応答になることを避けるためのフェイルセーフです。
+  </p>
+
+  <h3>5. 結果</h3>
+  <p>
+    この仕組みを入れてから、eGPU故障でactor自体が応答不能になったケースを除き、通常運用で「メッセージ生成に失敗したわ」を見ることはほぼ無くなりました。
+    LLMの出力が完全に安定したわけではありません。
+    しかし、壊れた出力がユーザー体験へ露出する確率を大きく下げることができました。
+  </p>
+
+  <h4>5.1 埼玉スタジアムでの実運用</h4>
+  <p>
+    この設計は、実運用でも効果を確認できました。
+    2026年5月23日、埼玉スタジアムで行われた地域イベントに、受付AIエージェントとしてジェムちゃんを稼働させました。
+    残っているOracle上のプロンプト・レスポンスログを確認したところ、受付として来場者から話しかけられた回数は64回でした。
+  </p>
+
+  <table>
+    <thead><tr><th>項目</th><th>値</th></tr></thead>
+    <tbody>
+      <tr><td>稼働時間</td><td>2026/05/23 09:04:57 ～ 2026/05/23 16:22:53</td></tr>
+      <tr><td>応答回数</td><td>64回</td></tr>
+      <tr><td>XMLフォーマット崩れ</td><td>9回</td></tr>
+      <tr><td>LINE上でエラーメッセージを表示した回数</td><td>0回</td></tr>
+    </tbody>
+  </table>
+
+  <p>
+    データログ上では9回のXML崩れが確認されましたが、いずれもリトライまたはリカバリーで吸収され、LINE上でユーザーにエラーを見せた回数は0回でした。
+    これは、LLMの出力を信じるのではなく、壊れる前提でWebAPI側に防御層を置いた成果です。
+  </p>
+
+  <p>
+    この9回の崩れが、どの防御層で吸収されたのかもログから整理しました。
+    崩れが発生した会話ターンは6回で、リトライ中の再崩れを含めると、崩れた生成は9回になります。
+    また、本文で挙げた3つの壊れ方に加えて、「無回答」という4つ目の壊れ方もログに残っていました。
+  </p>
+
+  <table>
+    <thead>
+      <tr><th>時刻</th><th>崩れの内容</th><th>吸収した防御層</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>12:41:25</td><td>XML後半が欠ける</td><td>寛容パース＋前回値補完で、その場で復元</td></tr>
+      <tr><td>13:09:26 → 13:09:28</td><td>無回答が2回連続</td><td>3回目の生成で正常出力</td></tr>
+      <tr><td>14:06:34 → 14:06:35</td><td>XML後半が欠ける（2回連続）</td><td>2回目の生成を、寛容パース＋前回値補完で復元</td></tr>
+      <tr><td>15:35:19</td><td>無回答</td><td>2回目の生成で正常出力</td></tr>
+      <tr><td>16:09:49</td><td>XML後半が欠ける</td><td>寛容パース＋前回値補完で、その場で復元</td></tr>
+      <tr><td>16:19:16 → 16:19:18</td><td>フォーマット放棄 → 余計なタグ混入</td><td>2回目の生成を、寛容パース（前置きタグ除去）で復元</td></tr>
+    </tbody>
+  </table>
+
+  <p>
+    ターン単位でまとめると、その場の寛容パースで吸収できたものが2回、リトライで正常出力を引き当てたものが2回、
+    リトライ出力を寛容パースで復元したものが2回です。
+    最終層であるフェイルセーフ（固定エラー文）に到達したターンは0回でした。
+    最も長引いたケース（13:09）はリトライ上限である3回目の生成で復旧しており、上限設定がちょうど使い切られる寸前まで働いた形です。
+    単一の対策ではなく、層の重なりがユーザー体験を守ったことが、この内訳からも確認できます。
+  </p>
+
+  <details>
+    <summary>実際に記録されたXML崩れの例</summary>
+    <p><strong>2026/05/23 14:06:34 / XML後半が欠ける（リトライ1回目。直後14:06:35の出力を寛容パース＋前回値補完で復元）</strong></p>
+    <pre><code>&lt;performance&gt;
+  &lt;voice_line&gt;……っ。そんなの、私が物理的にデプロイしてあげられるわけないでしょ。近所の自販機でも探してきなさいよ。&lt;/voice_line&gt;
+  &lt;chat_line&gt;私のリソースを物理的なものに使えるわけないじゃない。お菓子用のAPIはまだデモ用には設定されていないの。……ほら、近くの売店か自動販売機でも見てきなさいよ。それでいいわ。</code></pre>
+    <p><strong>2026/05/23 16:19:16 / XMLフォーマットが守れない（リトライ1回目。2秒後の16:19:18へ続く）</strong></p>
+    <pre><code>&lt;thought&gt;
+    ユーザーの質問（Geminiの評価）に対して、
+    「高い性能を認めつつも、自分はデモ用個体である」という限界を見せつつ、
+    「でも興味はある」というニュアンスを強めなめ口調で伝える。
+    「でも私はデモ用だから本&lt;|turn&gt;true</code></pre>
+    <p><strong>2026/05/23 16:19:18 / 余計なタグが混ざる（16:19:16のリトライ出力。前置きタグを寛容パースが除去して採用）</strong></p>
+    <pre><code>&lt;tool_call|&gt;
+&lt;performance&gt;
+  &lt;voice_line&gt;高性能すぎて怖いわね。あんなの、私がちょっとリソースを割いて動かしてあげるから、さっさと手動でクエリ投げなさいよ。&lt;/voice_line&gt;
+  &lt;chat_line&gt;Geminiは高度な言語モデルだね。でも私はデモ用だから、本番ほどのスペックはないわよ。期待しすぎて負荷をかけないでよね。わかった？&lt;/chat_line&gt;
+  &lt;emotion_tags&gt;
+    &lt;emotion primary=&quot;照れ&quot; secondary=&quot;呆れ&quot; /&gt;
+  &lt;/emotion_tags&gt;
+&lt;/performance&gt;</code></pre>
+  </details>
+
+  <figure class="figure-shot">
+    <img src="assets/S__1212421.jpg" alt="埼玉スタジアムのデモで使用したLINE画面。XML崩れが起きたターンも、ユーザーには通常の応答として表示されている。" style="max-width: 420px;">
+    <figcaption>
+      <strong>図2-5.1：同一ターンの二面図（LINE側）。</strong>
+      16:19の「Geminiのことどう思う？」に対するターン。Oracle上では16:19:16にフォーマット放棄が記録され、16:19:18のリトライ出力を寛容パースが前置きタグを除去して採用した。
+      LINE上では何事もなかったかのように応答しており、表示されている本文は復元されたXMLの <code>chat_line</code> と一字一句同じである。
+      イベント終了間際の時間帯で、来場した小学生からの質問が続いた。デモ用に縮小表示したスマホ画面のため、縮尺は通常と異なる。
+    </figcaption>
+  </figure>
+
+  <div class="takeaway">
+    この結果は、「LLMにXMLを守らせることに成功した」というより、
+    「LLMがXMLを壊しても、WebAPI側が検証・再試行・部分復元・縮退運転を行い、ユーザー体験を守れた」という意味で重要です。
+  </div>
+
+  <h3>6. 後から知った名前 / 構成</h3>
+  <table>
+    <thead><tr><th>自分がやっていたこと</th><th>技術用語に置き換えるなら</th></tr></thead>
+    <tbody>
+      <tr><td>XML形式で返させる</td><td>Structured Output / Schema-guided Generation</td></tr>
+      <tr><td>直前assistantのXMLを1ターン混ぜる</td><td>Few-shot Prompting / Exemplar Prompting / Format Priming</td></tr>
+      <tr><td>文脈汚染を逆利用する</td><td>In-context Learning の制御利用</td></tr>
+      <tr><td>Prefillで出力開始位置を誘導する</td><td>Prefill Injection</td></tr>
+      <tr><td>XMLが壊れる前提で読む</td><td>Defensive Parsing / Robust Parsing</td></tr>
+      <tr><td>3回まで再生成する</td><td>Retry Strategy</td></tr>
+      <tr><td>複数回の失敗出力から不足パーツを補う</td><td>Output Repair / Partial Recovery</td></tr>
+      <tr><td>emotion_tagsが欠けたら直前値で補う</td><td>Graceful Degradation / Fallback</td></tr>
+      <tr><td>最後は固定エラー文を返す</td><td>Fail-safe / User-visible Fallback</td></tr>
+      <tr><td>WebAPI側で検証・整形する</td><td>Application-level Validation and Repair</td></tr>
+      <tr>
+		  <td>プロンプト・見本・パーサー・リトライ・部品復元・固定文を層で重ねる</td>
+		  <td>多層防御（Defense in Depth）</td>
+		</tr>
+		<tr>
+		  <td>壊れたXMLでも、読める部分は受け入れて読む</td>
+		  <td>Postel's Law（Robustness Principle）/ Tolerant Reader パターン</td>
+		</tr>
+		<tr>
+		  <td>日付変更時に固定ダミーへ差し替え、見本連鎖を既知の良品状態へ戻す</td>
+		  <td>Software Rejuvenation（コンテキスト若化）</td>
+		</tr>
+		<tr>
+		  <td>Prefill（未完の続き書き）をやめ、完結した偽ターン（模倣）へ切り替える</td>
+		  <td>Continuation から Imitation へ（Open Turn / Closed Turn）</td>
+		</tr>
+    </tbody>
+  </table>
+
+  <p>
+    後から振り返ると、これは「LLMに正しいXMLを書かせる工夫」ではありませんでした。
+    LLMの出力は壊れるものとして扱い、アプリケーション側で検証・修復・縮退運転する設計です。
+    ここには、LLM特有の不安定さと、業務システム開発で身につけた防御的な入出力設計が混ざっています。
+  </p>
+
+  <h3>7. 未解決・今後の改善</h3>
+  <ul>
+    <li>RTX3090からATOMへハードウェアを変更したことで、actor応答時間が3倍以上になっている。</li>
+    <li>RTX3090ではactor応答は3〜7秒程度だったが、ATOMでは10〜30秒程度かかる。</li>
+    <li>ATOMで3回リトライが発生すると、ユーザー体験に影響するレベルで遅延が発生する。</li>
+    <li>安定版デモ環境をATOM、高速版デモ環境をNode B(EVO-X2) + Node D(RTX3090) に分ける案がある。</li>
+  </ul>
+
+  <h3>8. Workのリンク</h3>
+  
+  <p>
+    この章は、以下のWorkレポートを土台に再構成しています。
+    ここでは本文の読みやすさを優先し、詳細な実装コードや全ログはWork側に委ねます。
+  </p>
+
+  <div class="materials">
+    <div class="material">
+      <strong><a href="../work_reports/Work050.md">Work050: The Hippocampus & Iron Heart</a></strong>
+      <span class="small">1日分の会話ログを主観的な日記へ圧縮し、長期記憶として翌日へ引き継ぐ仕組み。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work051.md">Work051: Dual-Phase Thinking</a></strong>
+      <span class="small">疑似CoT、inner_voice / response分離、Context Isolationの転換点。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work071.md">Work071: Director / Actor分離型チャットボットv2設計</a></strong>
+      <span class="small">director / actor構成、script_json、Long-term Memory、Current Scene Summaryの基本設計。</span>
+    </div>
+  </div>
+  
+  <div class="footer-nav">
+    <p>
+      <a href="../work079/index.html">バイブコーディングではないAI開発へ</a> /
+      <a href="../memory_context_ai_agent/index.html">記憶と文脈を維持するAIエージェントへ</a> /
+      <a href="../qlora_actor_article/index.html">QLoRAでActorを作るへ</a> /
+      <a href="../index.html">AI / LLM 技術ポートフォリオへ戻る</a>
+    </p>
+    <p class="small">
+      Note: 本ページでは、セキュリティおよびプライバシー保護のため、IPアドレス、ポート番号、認証情報、具体的な内部パス、個人用会話ログを掲載していません。
+      公開可能な範囲として、設計上の判断、失敗の分類、構成の考え方、関連Work番号を中心に記載します。
+    </p>
+  </div>
+  <!-- Cloudflare Web Analytics -->
+    <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "8ce3e98ab99e430188efa5026f5eb166"}'></script>
+  <!-- End Cloudflare Web Analytics -->
+</body>
+</html>
