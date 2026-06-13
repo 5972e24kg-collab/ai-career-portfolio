@@ -986,22 +986,181 @@ Framework v2
 
 
 
-  <h3>9-4. 実演デモ動画</h3>
+  <h3>9-4. 実演デモ動画：外部LT版（EVO-X2 + eGPU）</h3>
 
   <p>
     以下は、外部LTで使用した実演デモである。
-    LINE入力、Director / Actor構成、音声、アバター表示を短時間で確認できる動作証跡として掲載する。
-    ここでは見た目のインパクトそのものではなく、テキスト・音声・アバター・内部構成説明が連動している点を確認する。
+    EVO-X2のROCm環境とRTX 3090のCUDA環境を組み合わせ、複数の推論処理を分担していた時点の動作証跡として掲載する。
+    LINE入力、Director / Actor構成、音声、アバター表示に加え、当時の処理時間とGPU電力を確認できる。
   </p>
 
   <figure class="evidence">
     <div class="video-wrap">
-      <iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/uBi6DTFLVZs?si=7u1xSl_BbNKYRH1G" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+      <iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/uBi6DTFLVZs?si=7u1xSl_BbNKYRH1G" title="外部LT版 ジェムちゃん実演デモ" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
     </div>
     <figcaption>
-      外部LTで使用した実演デモ。LINE入力、Director / Actor構成、音声、アバター表示を含む動作証跡として掲載する。
+      外部LTで使用した実演デモ。EVO-X2 + RTX 3090 eGPU構成で、LINE入力、Director / Actor、音声、アバター表示を連動させている。
     </figcaption>
   </figure>
+
+  <table>
+    <thead>
+      <tr>
+        <th>処理工程</th>
+        <th>動画から確認できた処理時間</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Director</td>
+        <td>約26秒</td>
+      </tr>
+      <tr>
+        <td>Actor</td>
+        <td>約1秒</td>
+      </tr>
+      <tr>
+        <td>Analyzer</td>
+        <td>約8秒</td>
+      </tr>
+      <tr>
+        <td>Scene Summary</td>
+        <td>計測不能（LTを5分以内に収めるため、動画では処理部分をカット）</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <table>
+    <thead>
+      <tr>
+        <th>GPU</th>
+        <th>最大スパイク</th>
+        <th>アイドル</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>EVO-X2 / ROCm</td>
+        <td>137W</td>
+        <td>12W</td>
+      </tr>
+      <tr>
+        <td>RTX 3090 / CUDA</td>
+        <td>117W</td>
+        <td>17W</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    電力値は、動画内のGPUステータスに表示された各デバイスの値であり、コンセント側で測定したシステム全体の消費電力ではない。
+    また、各最大スパイクは動画から読み取った個別の最大値であり、同一時刻の合算値ではない。
+  </div>
+
+  <h3>9-5. 実演デモ動画：AI TOP ATOM移行後</h3>
+
+  <p>
+    以下は、ジェムちゃんの本番機能をGIGABYTE AI TOP ATOMへ集約し、デモ画面と実行制御を更新した後の実演動画である。
+    EVO-X2 + eGPU構成より各推論工程は遅くなった一方、GPUステータス上の電力は大幅に低下し、単一ノードで常時稼働させる構成へ変化している。
+  </p>
+
+  <p>
+    動画では、通常ルートによる1回目の推論後、処理中の入力がBusyGateに2回拒否され、さらに自律的な独り言が割り込み、その後に通常ルートの2回目の推論が行われている。
+    撮影時に想定した順序どおりには進まなかったが、通常推論、多重実行防止、自律発話という複数の制御経路が実際に動作していることを確認できる。
+  </p>
+
+  <figure class="evidence">
+    <div class="video-wrap">
+      <iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/0b5zrqDP7v4?si=arDOFpO5Mqd_n19g" title="AI TOP ATOM移行後 ジェムちゃん実演デモ" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+    </div>
+    <figcaption>
+      AI TOP ATOM単体へ移行した後の実演デモ。更新された画面、通常推論、BusyGateによる多重リクエスト拒否、自律的な独り言、GPUステータスを確認できる。
+    </figcaption>
+  </figure>
+
+  <table>
+    <thead>
+      <tr>
+        <th>処理工程</th>
+        <th>動画から確認できた処理時間</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Director</td>
+        <td>約45秒</td>
+      </tr>
+      <tr>
+        <td>Actor</td>
+        <td>約35秒</td>
+      </tr>
+      <tr>
+        <td>Analyzer</td>
+        <td>約31秒</td>
+      </tr>
+      <tr>
+        <td>Scene Summary</td>
+        <td>約41秒</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <table>
+    <thead>
+      <tr>
+        <th>GPU</th>
+        <th>最大スパイク</th>
+        <th>アイドル</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>AI TOP ATOM / CUDA</td>
+        <td>12W</td>
+        <td>6W</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    電力値は、動画内のGPUステータスに表示された値であり、システム全体の消費電力ではない。
+    最大スパイクが12Wという低さは、監視値だけを見ると推論中か不安になるほどだが、その代わり各工程には約31〜45秒を要している。
+  </div>
+  <div class="highlight">
+    この処理時間の増加は、性能の後退ではなく設計上の優先順位の結果である。
+    本システムは「記憶と文脈を維持するAIエージェント」であり、「即応するAIエージェント」ではない。
+    個人開発ではインフラ投資に限りがあるため、速度の追求は早い段階で要件から外し、安定性と継続運用性を優先した。
+    実際、外部デモとLTでハードウェアを連続して酷使した結果、eGPUの破損も経験している。
+    ハードウェア故障は即時のサービス停止を意味し、動かないAIエージェントは存在しないことと等価である。
+    その点、AI TOP ATOMにおけるGPUステータス上の消費電力の低さは推論基盤に余力が残っていることの裏返しでもあり、常時稼働を前提とする本システムにとって、安心して長期運用を任せられる基盤になったことを意味している。
+  </div>
+  <div class="comparison">
+    <div class="box">
+      <h3>外部LT版：EVO-X2 + eGPU</h3>
+      <ul>
+        <li>ROCmとCUDAへ処理を分散</li>
+        <li>Director 約26秒、Actor 約1秒、Analyzer 約8秒</li>
+        <li>高速だが、複数の演算装置とeGPUを使用</li>
+        <li>Scene SummaryはLT時間内に収めるため動画からカット</li>
+      </ul>
+    </div>
+
+    <div class="box">
+      <h3>移行後：AI TOP ATOM単体</h3>
+      <ul>
+        <li>本番機能を単一ノードへ集約</li>
+        <li>各工程は約31〜45秒</li>
+        <li>GPUステータス上の最大スパイクは12W</li>
+        <li>BusyGate、自律発話、更新版デモ画面を確認可能</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="takeaway">
+    2本の動画は、同じ完成状態を撮り直したものではない。
+    外部LT版はEVO-X2 + eGPUによる分散構成で外部実演を成立させた時点の記録であり、ATOM版は推論速度と引き換えに低いGPU電力と単一ノード運用を選び、さらに多重実行防止・自律発話・可観測性を追加した時点の記録である。
+    両方を残すことで、AIエージェントが継続的に進化していることと、ハードウェア移行による速度・電力・構成の変化を比較できる。
+  </div>
 
 
   <h2 id="body">10. 音声・VRMアバター・感情表現への分岐</h2>
