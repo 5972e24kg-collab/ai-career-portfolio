@@ -5,6 +5,9 @@
   <title>AI / LLM 技術ポートフォリオ</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
+    * {
+      box-sizing: border-box;
+    }
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       line-height: 1.7;
@@ -13,8 +16,14 @@
       padding: 0 20px;
       color: #222;
     }
-    h1, h2 {
+    h1, h2, h3 {
       line-height: 1.3;
+    }
+    h2 {
+      margin-top: 2.4em;
+    }
+    h3 {
+      margin-top: 1.8em;
     }
     .note {
       background: #f6f8fa;
@@ -22,11 +31,75 @@
       padding: 12px 16px;
       margin: 20px 0;
     }
+    .profile-lead {
+      background: #ddf4ff;
+      border-left: 5px solid #0969da;
+      padding: 18px 20px;
+      margin: 20px 0 28px;
+    }
+    .profile-lead p {
+      margin: 0;
+      font-size: 1.08em;
+    }
+    .capability {
+      border: 1px solid #d0d7de;
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin: 18px 0;
+      background: #fff;
+    }
+    .capability h3 {
+      margin-top: 0;
+      margin-bottom: 12px;
+    }
+    .capability p:last-child {
+      margin-bottom: 0;
+    }
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin: 18px 0 28px;
+    }
+    .metric {
+      border: 1px solid #d0d7de;
+      border-radius: 10px;
+      padding: 14px 16px;
+      background: #f6f8fa;
+    }
+    .metric strong {
+      display: block;
+      color: #0969da;
+      font-size: 1.18em;
+      margin-bottom: 4px;
+    }
+    .metric span {
+      color: #57606a;
+      font-size: 0.95em;
+    }
     .guide {
       background: #f6f8fa;
       border-left: 4px solid #0969da;
-      padding: 12px 16px;
+      padding: 16px 18px;
       margin: 20px 0;
+    }
+    .guide-list {
+      margin: 0;
+      padding-left: 1.5em;
+    }
+    .guide-list > li {
+      margin: 0 0 22px;
+      padding-left: 4px;
+    }
+    .guide-list > li:last-child {
+      margin-bottom: 0;
+    }
+    .guide-list h3 {
+      margin: 0 0 8px;
+      font-size: 1.08em;
+    }
+    .guide-list p {
+      margin: 6px 0;
     }
     .concepts {
       background: #fff8e6;
@@ -58,6 +131,17 @@
     a {
       color: #0969da;
     }
+    @media (max-width: 640px) {
+      body {
+        margin-top: 24px;
+        padding: 0 16px;
+      }
+      .profile-lead,
+      .capability,
+      .metric {
+        border-radius: 8px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -75,7 +159,123 @@
     公開可能な範囲で、実装・検証・運用の証跡を整理しています。
   </div>
 
-  <h2>本ポートフォリオにおけるAI開発スタイル</h2>
+  <h2 id="about-me">3分で分かる私</h2>
+
+  <div class="profile-lead">
+    <p>
+      <strong>LLMの非決定性を単に抑え込むのではなく、「制御された自由」として設計し、自律的に振る舞うAIエージェントを、アプリケーションからインフラまで一人で構築・運用してきたエンジニアです。</strong>
+    </p>
+  </div>
+
+  <h3>私の全体像</h3>
+  <p>
+    私は、LLMを利用したプロダクトの発案、企画、要件定義から、アプリケーション設計、実装、インフラ、ネットワーク、セキュリティ、障害対応、継続運用までを一貫して行ってきました。
+  </p>
+  <p>
+    既存の技術を組み合わせるだけではなく、実現したいユーザー体験から必要な機能を逆算し、不足する技術や知識を自ら獲得しながら、実際に動くシステムへ落とし込むことを得意としています。
+  </p>
+  <p>
+    個人研究では、記憶、文脈、人格、自律的な発話、音声、3Dアバターを統合したAIエージェントを構築しました。日常的に利用する実運用環境として継続稼働させ、モデルの出力品質だけでなく、可用性、障害時の縮退、運用負荷、ユーザー体験まで含めて改善を続けています。
+  </p>
+
+  <div class="capability">
+    <h3>1. LLMアプリケーションの信頼性・可用性設計</h3>
+    <p>
+      LLMの出力は非決定的であり、同じ指示でも常に同じ形式や品質が得られるとは限りません。
+    </p>
+    <p>
+      私は、その不確実性をモデルだけに解決させるのではなく、出力を受け取るアプリケーション層に、構造検証、修復、再生成、フォールバック、縮退運転を実装しました。
+    </p>
+    <p>
+      実地運用では、観測された構造化出力の崩れ約14％をアプリケーション側で補正し、ユーザーから見えるエラーを0％に抑えました。
+    </p>
+    <p>
+      また、方針決定を担うDirectorと、表現生成を担うActorを分離するPlanner–Executor型の構成を採用しています。モデルごとの能力を見極め、適切な責務だけを持たせることで、長期運用における人格や応答品質の崩れを抑えています。
+    </p>
+  </div>
+
+  <div class="capability">
+    <h3>2. 記憶・文脈・自律性を持つAIエージェント設計</h3>
+    <p>
+      ステートレスなLLMに対して、長期的な関係性と直近の会話の流れを維持するため、異なる役割を持つ二つの記憶系統を設計しました。
+    </p>
+    <p>
+      <strong>長期記憶（Long-term Memory）</strong>では、会話ログを長期視点で監査し、未完了の話題、ユーザーが覚えておくよう求めた内容、今後の会話に影響する情報などを抽出し、重要度を付けて永続化します。
+    </p>
+    <p>
+      <strong>短期記憶（Scene Summary）</strong>では、直近の会話に焦点を当て、会話の進行に合わせて要約を更新します。新しい話題を強く残し、時間が経過した話題を徐々に薄めることで、自然な忘却を含む会話の流れを作っています。
+    </p>
+    <p>
+      さらに、要約や長期記憶の誤りだけで文脈が決まらないよう、直近の会話原文もプロンプトへ含める安全措置を設けています。
+    </p>
+    <p>
+      この記憶設計と、Director、Actor、Analyzerなどの役割分担を組み合わせることで、一貫性を維持しながらも、AI自身が話しかけるか、沈黙するか、どのような表現を選ぶかという部分には確率的な自由を残しています。
+    </p>
+  </div>
+
+  <div class="capability">
+    <h3>3. ローカル／オンプレLLM基盤の構築・運用</h3>
+    <p>
+      CUDAとROCmという異なるGPU基盤上で、複数のLLMを役割分担させて運用してきました。
+    </p>
+    <p>
+      情報や事例が比較的少ないROCm環境でも、現象の観測、原因の仮説化、切り分け、検証を行い、自ら障害を解決しています。
+    </p>
+    <p>
+      例えば、ROCm上でEmbedding処理がCPUへフォールバックし、実用的な時間で処理できなかった際には、ベクトル計算だけをCUDAノードへ分離する構成へ変更しました。単一のマシンや技術ですべてを解決しようとせず、処理特性に応じて計算資源を配置しています。
+    </p>
+    <p>
+      また、モデルをVRAMへ常駐させるとアイドル時にもCPU負荷とファン回転が継続する問題について、ドライバの問題と決めつけずに調査しました。その結果、HSAランタイムのビジーウェイトを原因として特定し、割り込み待ちへ変更することで解消しました。
+    </p>
+    <p>
+      構築だけでなく、監視、バックアップ、ノード分散、障害時の切り替えまで含めて、継続運用できる基盤として設計しています。
+    </p>
+  </div>
+
+  <div class="capability">
+    <h3>4. QLoRAによる用途特化モデルの開発・運用</h3>
+    <p>
+      自作した学習データを用いて、Llama系、Gemma 3系、Gemma 4系モデルのQLoRAを行ってきました。
+    </p>
+    <p>
+      学習は一度成功すれば終わりではありません。生成結果を観察し、学習の効き方、口調の変化、指示追従性、過学習、表現の偏りを確認しながら、データの内容や配分を調整しています。
+    </p>
+    <p>
+      限られたVRAM環境でモデル全体を通常の構成では展開できなかった際には、推論時のメモリ使用量と学習時のメモリ使用量が異なることを実体験として理解しました。その上で、今回の演出面への適応という要件に合わせ、学習対象をモデル後半の一部へ限定する構成を選択し、学習を完走させました。
+    </p>
+    <p>
+      学習後は、LoRAアダプターの作成だけで終わらせず、ベースモデルとのmerge、GGUF変換、量子化、Ollamaへの登録、実際のAIエージェントへの組み込みまで一連の工程を行っています。
+    </p>
+    <p>
+      現在も、自分の要件に合わせて学習した独自Actorモデルを、実運用するAIエージェントの一部として使用し続けています。
+    </p>
+  </div>
+
+  <h3>数字で見る実証結果</h3>
+  <div class="metrics-grid">
+    <div class="metric">
+      <strong>約14％ → 0％</strong>
+      <span>構造化出力の崩れを、検証・修復・縮退処理によってユーザー可視エラー0％へ補正</span>
+    </div>
+    <div class="metric">
+      <strong>3か月以上</strong>
+      <span>記憶と人格を持つAIエージェントを継続運用</span>
+    </div>
+    <div class="metric">
+      <strong>4つ以上のLLM役割を分離</strong>
+      <span>Director、Actor、Analyzer、Scene Summaryなどをモデル特性に応じて配置</span>
+    </div>
+    <div class="metric">
+      <strong>CUDA・ROCmの異種混合構成</strong>
+      <span>大規模推論、表現生成、Embedding、学習を処理特性に応じて分散</span>
+    </div>
+    <div class="metric">
+      <strong>企画から運用まで一人で実施</strong>
+      <span>プロダクト企画、要件定義、Java／React実装、データベース、ネットワーク、GPU基盤、監視、障害対応を一貫して担当</span>
+    </div>
+  </div>
+
+  <h2 id="development-style">本ポートフォリオにおけるAI開発スタイル</h2>
   <p>
     私のAI開発スタイルは、いわゆるバイブコーディングではなく、
     <strong>Human-in-the-loop</strong> と <strong>AI Governance</strong> を組み込んだ
@@ -121,77 +321,101 @@
     </dl>
   </div>
 
-  <h2>まず読むなら</h2>
+  <p class="related">
+    この開発スタイルの具体的な実践例:
+    <a href="./work079/index.html">バイブコーディングではないAI開発</a>
+  </p>
+
+  <h2 id="start-here">まず読むなら</h2>
   <p>
-    初見の方は、目的に応じて以下の順に読むと全体像を把握しやすくなります。
-    本サイトは一次資料を多く含むため、最初から全てを読むのではなく、関心のある技術テーマから辿ることを想定しています。
+    「3分で分かる私」で紹介した4つの技術領域について、代表記事と根拠となる一次記録を案内します。
+    本サイトは一次資料を多く含むため、関心のある領域からご覧ください。
   </p>
 
   <div class="guide">
-    <ul>
+    <ol class="guide-list">
       <li>
-        <strong>代表記事: バイブコーディングではないAI開発</strong><br>
-        <a href="./work079/index.html">Work079 解説ページ</a> /
-        <a href="https://github.com/5972e24kg-collab/switchbot-ctrl-mcp-java">switchbot-ctrl-mcp-java</a> /
-        <a href="./work_reports/Work079.md">技術レポート</a>
+        <h3>LLMアプリケーションの信頼性・可用性設計</h3>
+        <p>
+          Director / Actorによる責務分離と、構造化出力の検証・再試行・部分復元・縮退運転を、実運用結果とともに確認できます。
+        </p>
+        <p>
+          <strong>代表記事:</strong>
+          <a href="./ai_agent_design_record/index.html">AIエージェント設計の実装記録 — 第1・2章</a>
+        </p>
+        <p class="related">
+          関連する一次記録:
+          <ul>
+            <li><a href="./work_reports/Work041.md">Work041: Time GroundingとEmotion Parsing</a></li>
+            <li><a href="./work_reports/Work082.md">Work082: デモ環境の構築とLTに向けた記憶分離・安全境界設計</a></li>
+            <li><a href="./work_reports/Work098.md">Work098: 安定運用に向けた多重リクエスト排他制御の実装</a></li>
+          </ul>
+        </p>
       </li>
+
       <li>
-        <strong>代表記事: 記憶と文脈を維持するAIエージェント</strong><br>
-        <a href="./memory_context_ai_agent/index.html">特設ページ</a> /
-        <a href="./work_reports/Work071.md">Director / Actor設計</a> /
-        <a href="./work_reports/Work072.md">Gemma 4 26B QLoRA</a>
+        <h3>記憶・文脈・自律性を持つAIエージェント設計</h3>
+        <p>
+          長期記憶、短期のScene Summary、直近会話原文、Director / Actorを組み合わせ、ステートレスなLLMへ関係性と会話の連続性を与えた設計です。
+        </p>
+        <p>
+          <strong>代表記事:</strong>
+          <a href="./memory_context_ai_agent/index.html">記憶と文脈を維持するAIエージェント</a>
+        </p>
+        <p class="related">
+          関連する一次記録:
+          <ul>
+            <li><a href="./work_reports/Work050.md">Work050: 長期記憶化と電源保護の設計</a></li>
+            <li><a href="./work_reports/Work051.md">Work051: Dual-Phase ThinkingとContext Isolation</a></li>
+            <li><a href="./work_reports/Work071.md">Work071: Director / Actor分離型チャットボットv2設計と記憶レイヤ再設計</a></li>
+          </ul>
+        </p>
       </li>
+
       <li>
-        <strong>代表記事: QLoRAでActorを作る</strong><br>
-        <a href="./qlora_actor_article/index.html">特設ページ</a> /
-        <a href="./work_reports/Work070.md">Gemma 4 E4B QLoRA</a> /
-        <a href="./work_reports/Work072.md">Gemma 4 26B QLoRA</a> /
-        <a href="./work_reports/Work089.md">Gemma 4 31B QLoRA</a>
+        <h3>ローカル／オンプレLLM基盤の構築・運用</h3>
+        <p>
+          VRAM容量の選定、CUDA / ROCm / ARM CUDAの使い分け、障害分離、電源・冷却・バックアップまで含むローカルAI基盤の軌跡です。
+        </p>
+        <p>
+          <strong>代表記事:</strong>
+          <a href="./ai_agent_design_record/index.html#chapter-3">AIエージェント設計の実装記録 — 第3章</a>
+        </p>
+        <p class="related">
+          関連する一次記録:
+          <ul>
+            <li><a href="./work_reports/Work010.md">Work010: EVO-X2ベンチマーク検証MEM編</a></li>
+            <li><a href="./work_reports/Work062.md">Work062: EVO-X2アイドル時のCPUファン暴走とROCmスピンロック解消</a>
+            <li><a href="./work_reports/Work087.md">Work087: eGPU障害からのRTX3090専用Node D緊急復旧</a></li>
+          </ul>
+        </p>
       </li>
+
       <li>
-        <strong>代表記事: AIエージェント設計の実装記録 — ジェムちゃんに詰め込んだ失敗・工夫・再設計の記録</strong><br>
-        <a href="./ai_agent_design_record/index.html">特設ページ</a>
+        <h3>QLoRAによる用途特化モデルの開発・運用</h3>
+        <p>
+          学習データ作成からQLoRA、merge、GGUF化、量子化、Ollama登録、AIエージェントへの組み込みまでを一連の運用として扱った記録です。
+        </p>
+        <p>
+          <strong>代表記事:</strong>
+          <a href="./qlora_actor_article/index.html">QLoRAでActorを作る</a>
+        </p>
+        <p class="related">
+          関連する一次記録:
+          <ul>
+            <li><a href="./work_reports/Work037.md">Work037: Gemma 3 27B QLoRA学習環境の完全構築</a></li>
+            <li><a href="./work_reports/Work072.md">Work072: Gemma 4 26B A4BのQLoRA成立とGGUF / Ollama本番化</a></li>
+            <li><a href="./work_reports/Work089.md">Work089: GIGABYTE AI TOP ATOMでのGemma4 31B QLoRA成立とOllama / Open WebUI実運用候補化</a></li>
+          </ul>
+        </p>
       </li>
-      <li>
-        <strong>全体像</strong><br>
-        <a href="./ai_summary_ja.md">AI向け技術要約Markdown</a> /
-        <a href="./work_index_ja.md">Work001〜Work087 索引</a>
-      </li>
-      <li>
-        <strong>Java MCP Server / Tool Use</strong><br>
-        <a href="https://github.com/5972e24kg-collab/portainer-ops-mcp-java">Java MCP Server</a> /
-        <a href="./work_reports/Work073.md">Work073</a> /
-        <a href="./work_reports/Work074.md">Work074</a>
-      </li>
-      <li>
-        <strong>Codex / AI伴走型開発</strong><br>
-        <a href="./work_reports/Work075.md">Work075</a> /
-        <a href="./work_reports/Work076.md">Work076</a>
-      </li>
-      <li>
-        <strong>RAG / ETL / 記憶制御</strong><br>
-        <a href="./work_reports/Work001.md">Work001</a> /
-        <a href="./work_reports/Work021.md">Work021</a> /
-        <a href="./work_reports/Work022.md">Work022</a> /
-        <a href="./work_reports/Work023.md">Work023</a> /
-        <a href="./work_reports/Work050.md">Work050</a> /
-        <a href="./work_reports/Work051.md">Work051</a>
-      </li>
-      <li>
-        <strong>ローカルLLM / QLoRA</strong><br>
-        <a href="./work_reports/Work010.md">Work010</a> /
-        <a href="./work_reports/Work018.md">Work018</a> /
-        <a href="./work_reports/Work029.md">Work029</a> /
-        <a href="./work_reports/Work071.md">Work071</a> /
-        <a href="./work_reports/Work072.md">Work072</a>
-      </li>
-    </ul>
+    </ol>
   </div>
 
   <h2>主要資料</h2>
   <ul>
     <li><a href="./ai_summary_ja.md">AI向け技術要約Markdown</a></li>
-    <li><a href="./work_index_ja.md">Work001〜Work087 索引</a></li>
+    <li><a href="./work_index_ja.md">公開済みWork索引</a></li>
     <li><a href="./public_scope_and_masking_ja.md">公開範囲・マスク方針</a></li>
     <li><a href="./pre_public_review/index.html">AIを用いた公開前レビュー運用</a></li>
   </ul>
@@ -257,7 +481,7 @@
         <a href="./work_reports/Work032.md">Work032</a> /
         <a href="./work_reports/Work033.md">Work033</a> /
         <a href="./work_reports/Work034.md">Work034</a> /
-        <a href="./work_reports/Work035.md">Work035</a> / 
+        <a href="./work_reports/Work035.md">Work035</a> /
         <a href="./work_reports/Work036.md">Work036</a> /
         <a href="./work_reports/Work037.md">Work037</a> /
         <a href="./work_reports/Work038.md">Work038</a> /
@@ -273,7 +497,7 @@
           AIエージェント設計の実装記録 — ジェムちゃんに詰め込んだ失敗・工夫・再設計の記録
         </a>
       </strong><br>
-      チャットボットをAIエージェントとして磨き上げる中で遭遇した課題と、それに現場経験と伴走AIで向き合い続けた試行錯誤の記録。<br>
+      チャットボットをAIエージェントとして磨き上げる中で遭遇した、アプリケーション設計、構造化出力、ハードウェア基盤の課題と、それに現場経験と伴走AIで向き合い続けた試行錯誤の記録。<br>
     </li>
     <li>
       <strong>
@@ -320,8 +544,8 @@
 
   <h2>公開済み実レポート</h2>
   <p>
-    Work001〜Work087 のうち、公開範囲・マスク方針に基づく確認が完了した技術レポートを順次掲載します。
-    これらは、索引やAI向け要約資料の根拠となる一次資料です。
+    公開範囲・マスク方針に基づく確認が完了した技術レポートを順次掲載します。
+    これらは、公開済みWork索引やAI向け技術要約資料の根拠となる一次資料です。
   </p>
   <ul>
     <li><a href="./work_reports/index.html">公開済み実レポート一覧</a></li>

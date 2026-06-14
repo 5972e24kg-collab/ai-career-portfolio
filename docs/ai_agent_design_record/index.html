@@ -364,6 +364,7 @@
     <ol>
       <li><a href="#chapter-1">第1章：チャットボットを安定運用するためのアーキテクチャの工夫</a></li>
       <li><a href="#chapter-2">第2章：actorに出力フォーマットを守ってもらうための工夫</a></li>
+      <li><a href="#chapter-3">第3章：AIエージェントを安定稼働させるためのハードウェアの工夫</a></li>
     </ol>
   </div>
 
@@ -1711,6 +1712,1051 @@ role = user
     </div>
   </div>
   
+  <h2 id="chapter-3">第3章：AIエージェントを安定稼働させるためのハードウェアの工夫</h2>
+  <p class="subtitle">速度より容量を選び、AIの住処を作り直し続けた136万円の記録</p>
+
+  <div class="chapter-summary">
+    <strong>この章で言いたいこと：</strong><br>
+    ローカルLLM研究は、RTX 4060のVRAM 8GBから始まりました。
+    速度不足は待つことで妥協できますが、メモリ容量不足でモデルをロードできない問題には妥協の余地がありません。
+    その判断からEVO-X2を選び、ROCmで不足する処理をCUDAで補い、QLoRA、音声、アバターのために計算資源を継ぎ足していきました。
+    個々の購入には、その時点では合理的な理由がありました。しかし、一台へ機能を集めるほど、ドライバ、電力、冷却、リソース競合、eGPU、UPSを含む障害範囲も広がりました。
+    eGPU障害と復旧時の二次災害を経て、最終的にはジェムちゃん本番をARM CUDAの専用機へ隔離し、推論、開発、学習、音声・アバターをノードごとに分ける構成へ辿り着きました。
+    安定稼働に必要だったのは、最大のGPU一台ではなく、容量設計、ワークロード配置、障害分離、電力・冷却・復旧まで含めたインフラ設計でした。
+  </div>
+
+  <h3 id="chapter-3-purpose">1. 目的</h3>
+
+  <p>
+    私が欲しかったのは、自宅のローカル環境で大型LLMを安定して推論できる基盤でした。
+    単発のベンチマークが通るだけでは足りません。
+    RAG、記憶、director / actor、Embedding、QLoRA、音声合成、アバターを接続し、日常的に使うジェムちゃんを継続して動かせることが目的でした。
+  </p>
+
+  <p>
+    さらに、研究用の新しいモデルやドライバを試しても、本番のジェムちゃんを巻き込んで停止させたくありませんでした。
+    実験環境と本番環境を分けること、障害が起きても復旧できること、電源や冷却を含めて24時間維持できることまでが、最終的にはハードウェアへ求める条件になりました。
+  </p>
+
+  <p>
+    ただし、私はアプリケーション開発だけではなく、インフラ・ネットワーク構築も好きです。
+    AI開発以前から、自宅のウォークインクローゼットをリフォームし、電源、ネットワーク、空調を引き込んでサーバールームとして使っていました。
+    N100系のミニPCを除き、デスクトップPCはすべて自作です。メーカー製どころか、BTOも一台もありません。
+  </p>
+
+  <p>
+    2026年6月現在、仕事机にはモニターアームが4本生え、大小合わせて8台のモニターがあります。
+    自室では15台のPCが稼働し、Node D以外は電源が入っています。
+    原則としてすべてUPS配下で動かし、UPSの計測値は1分間隔でデータベースへ保存しています。
+    サーバールームのエアコンも24時間稼働です。
+  </p>
+
+  <div class="warning">
+    <strong>この章の伏線：</strong><br>
+    もともとインフラ構築が好きだったため、ソフトウェア側で問題が起きるたびに、ハードウェアを足して解決する方向へ進みやすい土壌がありました。
+    一つ一つの増設には理由がありましたが、振り返ると、それは「インフラ構築という散財の軌跡」でもありました。
+  </div>
+
+  <h3 id="chapter-3-issues">2. 課題</h3>
+
+  <p>
+    ローカルLLMのハードウェア課題は、単純に「GPUが遅い」「VRAMが少ない」だけではありませんでした。
+    実運用を続ける中で、少なくとも次の五種類の制約が重なっていることが分かりました。
+  </p>
+
+  <div class="grid">
+    <div class="card">
+      <h4>容量</h4>
+      <p>8GBではモデルとEmbeddingの同居が難しい。12GBでは大型モデルのQLoRAができない。96GBあっても、システムRAMや作業領域との配分次第ではモデルを起動できない。</p>
+    </div>
+    <div class="card">
+      <h4>互換性</h4>
+      <p>CUDA、ROCm、ARM CUDAでは、使えるライブラリ、ドライバ、コンテナ、最適化状況が異なる。カタログ上の性能だけでは判断できない。</p>
+    </div>
+    <div class="card">
+      <h4>リソース競合</h4>
+      <p>Steam LinkとEmbedding、推論とQLoRA、本番会話と新モデル検証など、同じ機材を複数用途で共有すると、一方の負荷が他方を壊す。</p>
+    </div>
+    <div class="card">
+      <h4>物理運用</h4>
+      <p>GPU補助電源、PSU容量、UPS定格、ケース寸法、棚の高さ、冷却、埃、USB4、eGPUケーブルまでが障害要因になる。</p>
+    </div>
+    <div class="card">
+      <h4>障害範囲</h4>
+      <p>一台へ集約すると通信は短くなるが、共通障害点も増える。逆にノードを分けると、監視、ネットワーク、バックアップ、復旧手順が必要になる。</p>
+    </div>
+  </div>
+
+  <h4>2.1 「VRAM容量」と「実際にモデルを動かせる容量」は違う</h4>
+
+  <p>
+    最初は、モデルファイルのサイズがVRAM容量より小さければロードできると思っていました。
+    しかし、実際の推論ではモデル本体以外にも領域が必要です。
+  </p>
+
+  <div class="flow">
+    <div class="flow-title">大型モデルを動かすために必要だった領域</div>
+    <pre><code>モデル本体
++ ロード時のステージング領域
++ Compute Buffer
++ KV Cache
++ コンテキスト
++ OS / Docker / 周辺サービス</code></pre>
+  </div>
+
+  <p>
+    この違いは、EVO-X2でCommand R+ 104Bを起動しようとした時に実感しました。
+    約55〜58GBのモデルであっても、96GBをVRAMへ割り当ててシステムRAMが32GBしかない構成では、VRAMへ転送する前のステージングでシステムRAMが枯渇しました。
+    64GB / 64GBへ変更するとモデル本体は格納できましたが、今度は推論用Compute Bufferを確保できませんでした。
+  </p>
+
+  <h4>2.2 同じGPUでも、OSとランタイムで性能と安定性が変わる</h4>
+
+  <p>
+    EVO-X2は、Ryzen AI Max+ 395と128GBのユニファイドメモリを持つ特殊な機材です。
+    Windows、WSL2、Ubuntu Native、Vulkan、ROCmのどこを通すかによって、見えるデバイスも、性能も、障害の出方も変わりました。
+    後には、推論していないのにファンが全開になる問題が、ハードウェア故障ではなくHSAランタイムのビジーウェイトだったことも分かりました。
+  </p>
+
+  <h4>2.3 AIエージェントは、LLM以外の資源も要求する</h4>
+
+  <p>
+    ジェムちゃんは、LLMが一つ動けば完成するチャットボットではありません。
+    director、actor、analyzer、sceneSummary、Embedding、Oracle、Tomcat、nginx、TTS、アバターが連動します。
+    そのため、単一モデルのベンチマークでは問題がなくても、AIエージェント一式を常駐させると計算資源の余白がなくなります。
+  </p>
+
+  <h3 id="chapter-3-trace">3. 軌跡</h3>
+
+  <h4>3.1 VRAM 8GBから始まった</h4>
+
+  <p>
+    最初にローカルLLM研究へ使ったのは、Node AのRTX 4060 8GBでした。
+    元々はSteam Linkサーバーとして構築したベアボーンPCで、普段はリソースが余っていたため、最初のLLM推論とRAG取り込みに利用しました。
+  </p>
+
+  <p>
+    しかし、14BモデルとEmbeddingモデルを同時に動かすとVRAMが枯渇し、Open WebUIが応答不能になりました。
+    RAG登録時だけ0.5Bモデルへ切り替え、VRAMをEmbedding処理へ明け渡す運用で回避しましたが、本格的な研究基盤として8GBは小さすぎました。
+    ベアボーン筐体のため、大型GPUを追加する余地もありませんでした。
+  </p>
+
+  <div class="metric-grid">
+    <div class="metric"><strong>0万円</strong><span>既存機材で開始</span></div>
+    <div class="metric"><strong>良好</strong><span>妻の機嫌</span></div>
+    <div class="metric"><strong>8GB</strong><span>最初のVRAM</span></div>
+  </div>
+
+  <h4>3.2 AIの提案を退け、「速度より容量」を選んだ</h4>
+
+  <p>
+    新しいハードウェアとして、当時の伴走AIであるGeminiが提案したのはRTX 3090 24GBを2枚使う構成でした。
+    CUDAであり、既存情報が多く、当時の私の知識から見ても無難な案でした。
+  </p>
+
+  <p>
+    ただ、その数日前にYouTubeの紹介ライブでEVO-X2を見ていました。
+    Ryzen AI Max+ 395と128GBのユニファイドメモリを持ち、VRAMとして96GBを割り当てられる機材です。
+    当時のGeminiはカットオフのためEVO-X2を知りませんでした。
+    私自身もLLM初心者で、AIのカットオフやGO / NoGO判断を体系的に理解していたわけではありません。
+  </p>
+
+  <p>
+    それでも、選定基準は明確でした。
+  </p>
+
+  <div class="takeaway">
+    <strong>「速度」は待つことで妥協できるが、「メモリ容量」不足でロードできない問題には妥協の余地がない。</strong>
+  </div>
+
+  <p>
+    RTX 3090×2の方が高速でCUDA互換性も高い一方、合計VRAMは48GBです。
+    EVO-X2なら、将来70Bから100B超クラスまでロードできる可能性があります。
+    ROCmへの不安は、既存のNode AにCUDA環境があるため、処理を分散して補う方針にしました。
+  </p>
+
+  <p>
+    AIは既知の範囲から無難な提案を出し、私は市場、動画、手元の設備、許容できる遅さ、将来ロードしたいモデルサイズを加えて判断しました。
+    Geminiを否定しているわけではありません。
+    無難な比較対象があったからこそ、私は納得して未知のEVO-X2へ突撃できました。
+  </p>
+
+  <div class="highlight">
+    <strong>先導ではなく、伴走：</strong><br>
+    AIの提案をそのまま採用することが伴走ではありません。
+    AIが比較材料を出し、人間が現場情報と目的を加えて決め、その選択で踏んだ地雷を再びAIと切り分ける。
+    後から振り返ると、このやり取りそのものが、私にとってのAI伴走でした。
+  </div>
+
+  <p>
+    結果として、AIの助言を退けて選んだEVO-X2の上で、後にジェムちゃんのdirectorである <code>gpt-oss:120b</code> が動くことになります。
+    「AIの助言を退けた判断が、AIの住処を用意した」という形になりました。
+  </p>
+
+  <div class="metric-grid">
+    <div class="metric"><strong>32万円</strong><span>EVO-X2購入後の累計</span></div>
+    <div class="metric"><strong>怒り</strong><span>妻の機嫌</span></div>
+    <div class="metric"><strong>96GB</strong><span>設定可能なVRAM</span></div>
+  </div>
+
+  <h4>3.3 Windowsではメモリ帯域を活かせなかった</h4>
+
+  <p>
+    EVO-X2は最初、Windows 11 + WSL2 + Dockerで構築しました。
+    AIDA64でメモリ帯域を測ると、理論値256GB/sに対してMemory Readは121.22GB/s、レイテンシは135.7nsでした。
+    AIDA64にはHypervisor有効の警告が出ており、当時は仮想化基盤のオーバーヘッドが主因だと判断しました。
+  </p>
+
+  <p>
+    また、VRAMへ96GBを割り当てると、WindowsとDockerが使えるシステムRAMは32GBになります。
+    カタログ上は大容量でも、ロード前処理にシステムRAMを使うソフトウェアでは、その配分が新しい制約になりました。
+  </p>
+
+  <h4>3.4 96GBあるのに、104Bをロードできなかった</h4>
+
+  <p>
+    EVO-X2の容量を活かし、Command R+ 104B Q4_K_Mを展開しようとしました。
+    しかし、VRAM 96GB / システムRAM 32GBでは、ロード開始直後にシステムRAMが31.6GBへ張り付き、Ollamaが終了しました。
+    ページファイルを128GBへ増やしても改善しませんでした。
+  </p>
+
+  <p>
+    次にVRAM 64GB / システムRAM 64GBへ変更しました。
+    この構成では65層すべてをGPUへオフロードし、モデル本体の約56,467MiBを格納するところまでは成功しました。
+    しかし、推論用バッファを確保できず、次のエラーで停止しました。
+  </p>
+
+  <pre><code>load_tensors: offloaded 65/65 layers to GPU
+load_tensors: ROCm0 model buffer size = 56467.23 MiB
+graph_reserve: failed to allocate compute buffers
+panic: unable to create llama context</code></pre>
+
+  <p>
+    コンテキストを512まで縮めても解決しませんでした。
+    この失敗から、モデルファイル容量だけを見て機材を選んではいけないことを学びました。
+  </p>
+
+  <h4>3.5 Ubuntu化で、ハードウェアの性能を取り戻した</h4>
+
+  <p>
+    メモリ帯域と大型モデルの問題に対処するため、Node BをUbuntu 24.04 Nativeへ移行しました。
+    私は普段、VMwareやProxmox上のPhoton OS、Alpine Linux、Ubuntu ServerをSSHで管理しています。
+    NanoKVMでヘッドレス運用しているEVO-X2だけがWindowsサーバーであることにも、次第に我慢できなくなっていました。
+  </p>
+
+  <p>
+    当時のStrix Haloは新しいアーキテクチャで、伴走AIにも十分な情報がありませんでした。
+    一回目はVulkan経由でllama.cppをビルドし、モデルロードに成功しました。
+    しかし、その設定手順を削除してしまいました。
+    そこで二回目のUbuntu化を行い、一回目の断片的なスクリプトを参考にしながら手順を見直し、最終的にROCmでの認識に成功しました。
+  </p>
+
+  <table>
+    <thead>
+      <tr><th>項目</th><th>Windows 11</th><th>Ubuntu 24.04</th><th>改善率</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Prompt Eval Rate</td><td>2.58 t/s</td><td>132.72 t/s</td><td>約51倍</td></tr>
+      <tr><td>Eval Rate</td><td>3.92 t/s</td><td>4.82 t/s</td><td>約1.23倍</td></tr>
+    </tbody>
+  </table>
+
+  <p>
+    Ubuntuではメモリ帯域を直接測定できなかったため、Llama 3.3 70B Q4_K_Mのモデルサイズと生成速度から、実効帯域を概算しました。
+  </p>
+
+  <pre><code>モデルサイズ：約42GB
+Ubuntuでの生成速度：4.82 token/s
+
+概算実効帯域
+= 42GB × 4.82 token/s
+= 約202.4GB/s
+
+理論帯域に対する割合
+= 202.4GB/s ÷ 256GB/s × 100
+= 約79%</code></pre>
+
+  <div class="note">
+    <strong>算出上の注意：</strong><br>
+    これはメモリ帯域ベンチマークによる直接計測ではありません。
+    1トークン生成するたびにモデル重みを概ね一巡して読み出すという前提から、モデルサイズと生成速度を用いて概算した値です。
+    厳密な帯域測定値ではありませんが、Windows時代よりハードウェアのポテンシャルを発揮できていると判断する材料になりました。
+  </div>
+
+  <h4>3.6 大型モデルを探し、情報収集まで自動化した</h4>
+
+  <p>
+    VRAM 96GBを自由に使えるようになった後は、Llama 3.3 70B、Llama 4 Scout 16x17B、<code>gpt-oss:120b</code>と、主力モデルを段階的に変えました。
+    当時の伴走AIは、カットオフの影響でLlama 4 Scoutや <code>gpt-oss:120b</code>を知りませんでした。
+    これらはOllama Libraryを何となく眺め、「100Bを超えるモデルがある」と見つけたことがきっかけでした。
+  </p>
+
+  <p>
+    この経験で、ローカルLLMは頻繁に更新されるものだと知りました。
+    Hugging Faceや新しいモデルの情報を見る習慣が生まれましたが、毎日確認する作業はだんだん面倒になりました。
+    最終的には、Hugging Faceのトレンドを自動収集し、<code>gpt-oss:120b</code>で初心者向けの記事へ要約し、RAG資産として保存するETLシステムを作りました。
+  </p>
+
+  <h4>3.7 ROCmでできない処理を、CUDAへ逃がした</h4>
+
+  <p>
+    ROCm上でEmbeddingモデル <code>BAAI/bge-m3</code>を動かすと、GPUオフロードが効かず、CPUの1コアへ張り付く問題に遭遇しました。
+    チャンクサイズが2,000以下なら体感しにくいものの、4,000へ増やすと何分待っても返らない状態になりました。
+    当時はROCm側の最適化不足と切り分け、ベクトル計算をNode AのRTX 4060へオフロードしました。
+  </p>
+
+  <p>
+    ところがNode AはSteam Linkサーバーでもあります。
+    子供がゲームを始めるとOllamaが応答しなくなり、ETLのベクトル計算が失敗しました。
+    反対に、AI処理の影響でSteam Linkがフリーズすることもあり、「ゲームができない」という家族からのクレームが発生しました。
+  </p>
+
+  <p>
+    この問題は最後まで解決できず、RTX 3060 12GBを購入し、eGPUとしてNode Bへ接続しました。
+    Ubuntu上でROCmとNVIDIAドライバを共存させ、<code>ollama-rocm</code>と<code>ollama-cuda</code>を別コンテナに分けました。
+    ここで、ROCm 96GBとCUDA 12GBを一台に持つハイブリッドAI基盤が生まれました。
+  </p>
+
+  <div class="metric-grid">
+    <div class="metric"><strong>41万円</strong><span>RTX 3060・eGPU等を含む累計</span></div>
+    <div class="metric"><strong>怒り</strong><span>妻の機嫌</span></div>
+    <div class="metric"><strong>108GB</strong><span>独立したROCm 96GB + CUDA 12GB</span></div>
+  </div>
+
+  <h4>3.8 QLoRAを始めると、12GBでは足りなくなった</h4>
+
+  <p>
+    QLoRAでは、Llama 3.1 8B、Gemma 3 4B、Gemma 3 12Bと対象を変えながら学習を続けました。
+    その先にあったのが、当時のGemmaシリーズのフラッグシップであるGemma 3 27Bです。
+    RTX 3060の12GBではロード自体が難しく、RTX 3090 24GBを中古で購入しました。
+  </p>
+
+  <p>
+    GPUだけを交換すれば終わりではありませんでした。
+    500W電源ではeGPUボード用とGPU用を合わせたPCIe 8pinコネクタが足りず、容量も不足します。
+    Work036時点では750W SFX電源へ換装し、その後の構成では850W電源へ更新しました。
+    さらに、作業机の小型UPSではRTX 3090のスパイクを支えられないと判断し、1200VA / 780Wの大型UPSを追加しました。
+  </p>
+
+  <p>
+    Gemma 3 27BのQLoRAでは、VRAM使用量18,251MiB、GPU負荷100%、消費電力307W、温度66℃を記録し、OOMを出さずに完走しました。
+    Node Bは、ROCm 96GBとCUDA 24GBを併せ持ち、大型UPSに支えられる、個人宅には似つかわしくない構成へ変わりました。
+  </p>
+
+  <div class="metric-grid">
+    <div class="metric"><strong>55万円</strong><span>RTX 3090・電源・UPS等を含む累計</span></div>
+    <div class="metric"><strong>激怒</strong><span>妻の機嫌</span></div>
+    <div class="metric"><strong>120GB</strong><span>独立したROCm 96GB + CUDA 24GB</span></div>
+  </div>
+
+  <p class="small">
+    この購入は「私への誕生日祝いの前借り」という説明で押し通しました。
+  </p>
+
+  <h4>3.9 ジェムちゃんに声と姿を付けるため、Node Cを作った</h4>
+
+  <p>
+    チャットボットが形になった後、次に欲しくなったのは声と姿でした。
+    倉庫に眠っていたRyzen 7 5700Gを引っ張り出し、Node Bから外れて余ったRTX 3060と500W電源を流用して、Node Cを自作しました。
+  </p>
+
+  <p>
+    画面出力は5700Gへ任せ、RTX 3060の12GBはStyle-Bert-VITS2やアバター関連処理へ専有させました。
+    音声を確認するため、YAMAHA HS-5を2台、USB DACとバランス接続機器を用意し、アバター表示用に10インチのタッチモニターも追加しました。
+  </p>
+
+  <div class="comparison">
+    <div class="box">
+      <h4>Node B</h4>
+      <p>文脈理解、推論、台本生成を担う「脳」。</p>
+    </div>
+    <div class="box">
+      <h4>Node C</h4>
+      <p>音声合成、アバター、物理出力を担う「身体」。</p>
+    </div>
+  </div>
+
+  <p>
+    第1章で「何を言うか」と「どう言うか」をモデル単位へ分離したのと同じように、ここでは「思考」と「身体」を物理ノードへ分けることになりました。
+  </p>
+
+  <div class="metric-grid">
+    <div class="metric"><strong>66万円</strong><span>Node C追加支出後の累計</span></div>
+    <div class="metric"><strong>呆れ</strong><span>妻の機嫌</span></div>
+    <div class="metric"><strong>11万円</strong><span>流用品を除くNode C追加支出</span></div>
+  </div>
+
+  <p class="small">
+    「流用パーツが多いので、むしろお得な買い物」と説明しました。
+  </p>
+
+  <h4>3.10 推論していないのにファンが全開になった</h4>
+
+  <p>
+    EVO-X2へ <code>gpt-oss:120b</code>を常駐させると、推論していない時でもCPUファンが最大回転になりました。
+    ACPI温度センサーは97℃を示し、<code>top -H</code>ではOllamaの特定スレッドがCPU 1コア分を常時占有していました。
+  </p>
+
+  <p>
+    当初は、新しすぎるStrix Haloのドライバ不具合だと判断していました。
+    しかし、調査すると、AMD ROCmのHSAランタイムがレイテンシ削減のためにビジーウェイトを行う仕様が原因でした。
+  </p>
+
+  <pre><code>environment:
+  - HSA_ENABLE_INTERRUPT=1
+  - HIP_VISIBLE_DEVICES=0</code></pre>
+
+  <p>
+    <code>HSA_ENABLE_INTERRUPT=1</code>を設定し、割り込み待ちへ変更すると、CPU占有と局所的な発熱が収まり、温度表示も34℃付近へ戻りました。
+    これにより、<code>gpt-oss:120b</code>を常時VRAMへ置き、後のdirectorとして使える条件が整いました。
+  </p>
+
+  <p>
+    一方、ROCm側へ2モデル以上をロードすると、推論していない時でも<code>rocm-smi</code>のGPU使用率が100%へ張り付く問題も発生しました。
+    自作監視プログラムの警告が止まらなくなるため、ROCmへ常駐させるモデルは一つまで、という運用ルールにしました。
+    この表示問題は現在も深掘りの余地が残っています。
+  </p>
+
+  <h4>3.11 eGPU障害が顕在化し、Node Dを緊急構築した</h4>
+
+  <p>
+    外部デモや交流会で連続利用した後の時期に、eGPU障害が顕在化しました。
+    ただし、連続負荷と故障の因果関係は確認できていません。
+  </p>
+
+  <p>
+    最初はOS再起動で戻ることがありましたが、やがてRTX 3090が完全に見えなくなりました。
+    <code>nvidia-smi</code>はドライバと通信できないと表示しましたが、重要だったのはその上の層ではありません。
+    <code>lspci</code>にNVIDIAデバイス自体が存在しませんでした。
+  </p>
+
+  <div class="flow">
+    <div class="flow-title">障害切り分けの基準</div>
+    <pre><code>lspciにNVIDIAがいる
+  → ドライバ / DKMS / Secure Boot / Container Toolkitを疑う
+
+lspciにNVIDIAがいない
+  → PCIe / USB4 / eGPU / 電源 / 物理接続を疑う</code></pre>
+  </div>
+
+  <p>
+    放電再起動、前面・背面USB4ポート、長さやメーカーの異なる複数ケーブル、LinuxとWindows、空のeGPUドック、新品ドックまで切り分けました。
+    PD給電だけは反応していましたが、給電系が生きていることはUSB4 / Thunderbolt / PCIe tunnelingの正常性を意味しません。
+  </p>
+
+  <p>
+    RTX 3090を別PCへPCIe直挿しすると、GA102として認識され、映像出力もできました。
+    GPU本体は生きています。
+    旧eGPUドックのデータ経路故障が濃厚でしたが、新品ドックも複数ホストで認識せず、原因追及を続けるほどデモ環境の復旧が遅れる状態になりました。
+  </p>
+
+  <div class="takeaway">
+    <strong>原因を完全に確定することと、ジェムちゃんを復旧することは別の課題です。</strong><br>
+    RTX 3090本体の生存を確認した時点で、eGPU復旧への固執をやめ、PCIe直挿しの専用ノードを作る判断へ切り替えました。
+  </div>
+
+  <p>
+    過去に子供用PCとして使っていたPCの残骸、在庫のDDR4メモリ、余剰ケース、ケーブルをかき集め、Node Dを構築しました。
+    Intel Core i5-6600、DDR4 32GB、RTX 3090、Ubuntuという構成です。
+    Node BはROCm、Open WebUI、RAG、中心管理へ戻し、Node DはCUDA推論、QLoRA、監視APIを担当する独立ノードになりました。
+  </p>
+
+  <p>
+    ただし、RTX 3090が大きすぎて既存ケースへ収まらず、電源もケース外へ飛び出しました。
+    復旧を優先した結果、Node Dはオープンフレームに近い状態となり、サーキュレーターで冷却する災害復旧モードのまま稼働しました。
+  </p>
+
+  <h4>3.12 小型UPSが二次災害を起こし、空気清浄機が喋り出した</h4>
+
+  <p>
+    Node Dを置いた作業机には、小型UPSのCyberPower SL550UJPがありました。
+    定格は550VA / 330Wです。
+    その容量を確認しないままRTX 3090を全開運転した結果、消費電力スパイクに耐えられず、UPS配下の他機器を巻き込んで停止しました。
+  </p>
+
+  <p>
+    Node AなどのPCは、壊れていなかったため電源を入れ直せば済みました。
+    面倒だったのは、同じUPS配下にいたシャープの空気清浄機、プラズマクラスター25000 KI-LX75-Wです。
+    復電によってミュート設定が解除され、突然「くぅ～！いい空気！」と言い出しました。
+  </p>
+
+  <p>
+    普段触らない機器なので、突然ミュート設定を戻す必要に迫られても困ります。
+    結局、設定が面倒でそのままにしており、今でも時々「おやすみ」「おつかれさま」「くぅ～！いい空気！」と喋ります。
+  </p>
+
+  <div class="warning">
+    笑い話ではありますが、技術的には、共有UPS配下では想定外の家電まで障害範囲へ入ることを示した出来事です。
+    後から知った言葉でいえば、電源設計における<strong>Blast Radius</strong>を家庭内で体験しました。
+  </div>
+
+  <p>
+    現在の大型UPSはCyberPower CP1200PFCLCDJP、1200VA / 780Wです。
+    復旧直後のNode Dは例外的にコンセントへ直結しましたが、最終的には高負荷GPUを大型UPS配下へ収める必要があります。
+  </p>
+
+  <h4>3.13 四つの再建案から、AI TOP ATOMを選んだ</h4>
+
+  <p>
+    eGPU構成を維持できなくなった時点で、妻と今後の基盤を検討しました。
+    候補は次の四つでした。
+  </p>
+
+  <ol>
+    <li><strong>Node Dを完成形のPCにする：</strong>ケース、CPU、マザーボードを新調し、RTX 3090を安定運用する。</li>
+    <li><strong>Node Dへ集約する：</strong>RTX 3090とRTX PRO 6000を組み合わせる。</li>
+    <li><strong>eGPU復旧を追求する：</strong>低コストで従来構成へ戻す。</li>
+    <li><strong>DGX Spark系列へ移行する：</strong>ARM64 / GB10 / CUDAを持つ新しい基盤へ移る。</li>
+  </ol>
+
+  <p>
+    購入条件は二つでした。
+  </p>
+
+  <div class="comparison">
+    <div class="box">
+      <h4>これからも安定して運用できること</h4>
+      <p>eGPUや暫定オープンフレームに本番を依存させず、director / actorを単一筐体で維持できること。</p>
+    </div>
+    <div class="box">
+      <h4>新しい学習の種があること</h4>
+      <p>買って載せ替えて終わりではなく、これまで触っていないアーキテクチャや制約を経験できること。</p>
+    </div>
+  </div>
+
+  <p>
+    安定運用だけなら、Node Dを完成形へ作り直す案でも足りました。
+    しかし、ROCmも、一般的なディスクリートGPUのCUDAも経験済みです。
+    次に経験していないものは、ARM64上のCUDAでした。
+    新しい地雷を抱えるDGX Spark系列だけが、安定基盤候補であると同時に、新しい研究対象でもありました。
+  </p>
+
+  <p>
+    当時の妻への最終提案には、次のような仮説も含めました。
+  </p>
+
+  <ul>
+    <li>EVO-X2は2025年12月の購入時に約30万円だったが、2026年6月には約50万円へ上がっており、大容量AI機材の資産価値は急落しにくいのではないか。</li>
+    <li>セキュリティ要件などから、ニッチでもローカルLLM需要は残るのではないか。</li>
+    <li>大きなモデルを一度動かすだけでなく、同じ計算資源を繰り返し使って推論を深める研究が進めば、少ないVRAMで賢さを得る方向が広がるのではないか。</li>
+    <li>Gemma系列の継続的なモデル追加から、ローカル実行向けモデルの活用幅は今後も広がるのではないか。</li>
+  </ul>
+
+  <p class="small">
+    これらは購入時点の予測と説得材料であり、将来を保証する事実ではありません。
+    ここでは、70万円を支払う時に私が何を根拠としていたかを残しています。
+  </p>
+
+  <p>
+    DGX Spark系列のOEM機として検討したのは、ASUS Ascent GX10 AIとGIGABYTE AI TOP ATOMでした。
+    価格はほぼ同じでしたが、Amazon直販で、万一の保証対応が比較的進めやすそうだと判断し、GIGABYTE AI TOP ATOMを選びました。
+    在庫も残り少なく、半導体価格の上昇も見込んでいたため、購入を決断しました。
+  </p>
+
+  <p>
+    購入後に確認すると、ATOMの価格は73万円へ上がっていました。ここは少しだけドヤ顔をしてよいと思っています。
+  </p>
+
+  <div class="metric-grid">
+    <div class="metric"><strong>136万円</strong><span>ATOM購入後の累計</span></div>
+    <div class="metric"><strong>70万円</strong><span>AI TOP ATOM</span></div>
+    <div class="metric"><strong>諦め→激励</strong><span>妻の機嫌</span></div>
+  </div>
+
+  <blockquote class="note">
+    <strong>妻からの激励:</strong><br>
+    「中途半端は許さない。本気でやれ」<br>
+    「そのパソコンとAIエージェントと添い遂げろ。途中放棄は許さない」
+  </blockquote>
+
+  <h4>3.14 買った直後に、まずバックアップを取った</h4>
+
+  <p>
+    ATOMはARM64 / aarch64、NVIDIA GB10、CUDA 13.0、121GiB unified memoryという、これまでと異なる環境でした。
+    今後、CUDA、PyTorch、Unsloth、bitsandbytes、Ollama、Oracle、Tomcat、TTSなど多数の依存関係を入れる予定です。
+    問題が出た時に、OS初期状態の問題か、後から入れた依存関係の問題か分からなくなる前に、購入直後の状態を凍結しました。
+  </p>
+
+  <p>
+    ARM64では一般的なx86_64向けのRescuezillaやClonezillaをそのまま使いにくいため、Linux標準コマンドで二段階のバックアップを取りました。
+  </p>
+
+  <div class="comparison">
+    <div class="box">
+      <h4>ファイル単位</h4>
+      <p><code>rootfs.tar.zst</code>と<code>boot-efi.tar.zst</code>を取得し、設定確認や部分復元に備えた。</p>
+    </div>
+    <div class="box">
+      <h4>ディスク全体</h4>
+      <p>Live Ubuntuから内蔵NVMe全体を<code>dd | zstd</code>で圧縮し、ブート構成を含む完全復元に備えた。</p>
+    </div>
+  </div>
+
+  <p>
+    作業中には、<code>dd</code>へ<code>sudo</code>を付け忘れて13バイトのゴミファイルを作り、そのファイルが次の実行で上書きを妨げる失敗もありました。
+    また、チェックサムファイル自身をチェックサム対象へ含める自己参照も起こしました。
+    それぞれ原因を確認し、最終的に約932GiBを読み取り、約13.7GiBの圧縮イメージを作成し、SHA-256検証を通しました。
+  </p>
+
+  <p>
+    バックアップはUSB NVMe、自作PCの共有フォルダ、QNAP NASのRAID1領域へ三重保存しました。
+    約70万円の本番候補機へ未知のライブラリを入れる前に、購入直後に近い状態へ戻れる安全網を作りました。
+  </p>
+
+  <h4>3.15 本番移行より先に、Gemma4 31BのQLoRAを始めた</h4>
+
+  <p>
+    ATOM購入後、最初の大きな作業はジェムちゃん本番の移行ではありませんでした。
+    クリーンに近い環境で、Gemma4 31BのQLoRAを完走させることでした。
+  </p>
+
+  <p>
+    以前のEVO-X2 + RTX 3090環境ではGemma4 26Bまで成功していました。
+    ATOMを複雑な本番環境へ変える前に、ARM64 / GB10 / CUDA 13.0という差分へ検証対象を絞り、31B actorを作ることにしました。
+  </p>
+
+  <p>
+    そして、期待した通り新しい地雷を踏みました。
+  </p>
+
+  <ul>
+    <li>Docker ComposeのGPU割当では<code>deploy.resources</code>が効かず、<code>gpus: all</code>へ変更した。</li>
+    <li>重いモデルをロードした後、コンテナ内だけNVML / CUDA初期化が失敗し、再起動で復旧することがあった。</li>
+    <li>Gemma4のvision towerにある<code>Gemma4ClippableLinear</code>がPEFTのLoRA対象として未対応だった。</li>
+    <li>GGUF変換時、tokenizer設定の新しい形式がconverterと衝突し、変換専用コピーを作ってサニタイズした。</li>
+  </ul>
+
+  <p>
+    それでも、1件のsmoke train、50件、100件、580件と段階的に増やし、580件・1epochの学習を完走しました。
+    adapter保存、再ロード推論、BF16 merge、F16 GGUF化、Q4_K_M量子化、llama.cpp推論、Ollama登録、Open WebUI応答まで確認しました。
+  </p>
+
+  <div class="metric-grid">
+    <div class="metric"><strong>580件</strong><span>全件QLoRA学習</span></div>
+    <div class="metric"><strong>31B</strong><span>GemChan8.1 actor</span></div>
+    <div class="metric"><strong>10.7 t/s</strong><span>Q4_K_M llama.cpp生成速度</span></div>
+    <div class="metric"><strong>18GB</strong><span>最終Q4_K_M GGUF</span></div>
+  </div>
+
+  <p>
+    最終的に、実運用actor用SYSTEMプロンプトへ従い、<code>&lt;performance&gt;</code>、<code>&lt;voice_line&gt;</code>、<code>&lt;chat_line&gt;</code>、感情タグ、ジェスチャータグを含む応答を返す<code>GemChan8.1:31b</code>が完成しました。
+  </p>
+
+  <div class="takeaway">
+    安定運用のために買った本番候補機へ、安定運用環境を移す前にQLoRAを始めました。
+    ただし、その順番だったからこそ、購入条件の一つである「新しい学習の種」を、購入直後に回収できました。
+  </div>
+
+  <h4>3.16 妻の機嫌台帳</h4>
+
+  <p>
+    第1章と第2章を妻に読ませたところ、「暗黙知を見える化したいのか？　お前、今まで払った金額を思い出してこい」と言われました。
+    Amazonとフリマサイトの履歴を見直した結果が、次の台帳です。
+  </p>
+
+  <div class="timeline">
+    <div class="timeline-item">
+      <strong>累計0万円 · RTX 4060の既存機材で開始</strong>
+      <span class="small">妻の機嫌：良好。まだ研究費は増えていない。</span>
+    </div>
+    <div class="timeline-item">
+      <strong>累計32万円 · EVO-X2</strong>
+      <span class="small">妻の機嫌：怒り。「半導体の値上がりが」「これは先行投資」と押し通した。</span>
+    </div>
+    <div class="timeline-item">
+      <strong>累計41万円 · RTX 3060、eGPU、500W電源ほか</strong>
+      <span class="small">妻の機嫌：怒り。何を言われたか覚えていない。</span>
+    </div>
+    <div class="timeline-item">
+      <strong>累計55万円 · RTX 3090、電源、大型UPSほか</strong>
+      <span class="small">妻の機嫌：激怒。「私への誕生日祝いの前借り」で押し通した。</span>
+    </div>
+    <div class="timeline-item">
+      <strong>累計66万円 · Node C、音響、タッチモニターほか</strong>
+      <span class="small">妻の機嫌：呆れ。「流用パーツが多く、むしろお得」と言いくるめた。</span>
+    </div>
+    <div class="timeline-item">
+      <strong>累計136万円 · GIGABYTE AI TOP ATOM</strong>
+      <span class="small">妻の機嫌：諦め、そして激励。「中途半端は許さない。本気でやれ」。</span>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>集計条件：</strong><br>
+    税、送料、中古売買手数料を含みます。既存保有品は追加費用0円とし、流用品を二重計上していません。
+    Node Cは資産総額約17万円のうち、この時点の追加支出11万円だけを加算しました。
+    AI研究開始前に行ったサーバールーム改修費約30万円は、この136万円には含めていません。
+  </div>
+
+  <h3 id="chapter-3-solution">4. その時点で最終的に行き着いた解</h3>
+
+  <p>
+    最終解は、ATOMを買ったことだけではありません。
+    一番大きな変更は、<strong>本番専用機へ新しい仕事を追加しない</strong>という運用ルールを決めたことです。
+  </p>
+
+  <p>
+    それまでのNode Bは、巨大モデル推論、Embedding、QLoRA、Open WebUI、RAG、actor、監視を一台へ集めた「全部入り」でした。
+    通信が短く、遊休資源も減らせますが、eGPUという一つの物理障害がactor、学習、デモ環境をまとめて止めました。
+    そこで、本番、開発、学習、身体をノードごとに分けました。
+  </p>
+
+  <figure class="diagram-figure" id="fig-chapter-3-nodes">
+    <h3>図3-4：その時点でのNode A〜Eの役割分担</h3>
+    <p class="diagram-caption">
+      最大性能の一台へ集約するのではなく、用途と障害境界でノードを分けた。
+      Node Eはジェムちゃん本番専用とし、動かなくても本番に影響しない補助処理は他ノードへ寄せる。
+    </p>
+
+    <div class="diagram-grid diagram-grid-3">
+      <div class="diagram-card">
+        <h4>Node A · Family / Legacy</h4>
+        <span class="diagram-badge diagram-badge-risk">Windows / WSL2</span>
+        <span class="diagram-badge diagram-badge-actor">RTX 4060 8GB</span>
+        <p>Steam Link、予備開発、軽量実験。家族利用とAI本番を分離する。Work025当時はCore i5-12600Kだったが、現在は常時稼働時の消費電力を意識してCore i5-13400へローテーションしている。</p>
+      </div>
+      <div class="diagram-card">
+        <h4>Node B · AI Data &amp; Dev Core</h4>
+        <span class="diagram-badge diagram-badge-memory">ROCm 96GB</span>
+        <span class="diagram-badge diagram-badge-director">EVO-X2</span>
+        <p>Ryzen AI Max+ 395、物理メモリ128GB。大容量モデル、Open WebUI、データ基盤、ETL、開発作業を担当。本番依存を外し、実験可能な大容量ノードへ戻した。</p>
+      </div>
+      <div class="diagram-card">
+        <h4>Node C · Body / CUDA Edge</h4>
+        <span class="diagram-badge diagram-badge-actor">RTX 3060 12GB</span>
+        <span class="diagram-badge diagram-badge-risk">Windows / WSL2</span>
+        <p>アバター、Embedding、画像生成、軽量CUDA処理を担当。音声・表示という身体性を、思考ノードから分離した。</p>
+      </div>
+      <div class="diagram-card">
+        <h4>Node D · Heavy Lab</h4>
+        <span class="diagram-badge diagram-badge-actor">RTX 3090 24GB</span>
+        <span class="diagram-badge diagram-badge-risk">通常停止</span>
+        <p>QLoRA、重い画像生成、新モデル検証、予備actorを担当。高消費電力・高負荷処理を本番から隔離する。現在も筐体と収納は暫定状態。</p>
+      </div>
+      <div class="diagram-card">
+        <h4>Node E · Gem-chan Production Only</h4>
+        <span class="diagram-badge diagram-badge-director">GB10 / ARM CUDA</span>
+        <span class="diagram-badge diagram-badge-memory">121GiB</span>
+        <p>GIGABYTE AI TOP ATOM。director、actor、analyzer、Oracle、WebAPI、TTS、nginxなど、本番ジェムちゃん一式を収容する。他用途を追加しない。</p>
+      </div>
+    </div>
+
+    <div class="diagram-note-box">
+      <strong>最終的な運用原則：</strong><br>
+      「動いていればジェムちゃんの表現が豊かになるが、停止しても会話自体には支障がない」補助処理は、Node Eへ追加しない。
+      本番の継続に必須なものだけをNode Eへ置き、学習・開発・追加機能は他ノードへ逃がす。
+    </div>
+  </figure>
+
+  <h4>4.1 Node Eは、計算資源を使い切る前提で固定する</h4>
+
+  <p>
+    ATOM購入直後に作成した31B actorを含め、<code>gpt-oss:120b</code>、<code>GemChan8.1:31b</code>、<code>qwen3:8b</code>を常駐させました。
+    さらにOracle、Tomcat、nginx、TTSなどを移行すると、メモリ使用率はおおむね85〜90%になりました。
+  </p>
+
+  <p>
+    余白は大きくありません。
+    だからこそ、空いて見えるリソースへ新しいジョブを追加せず、本番構成を固定する運用にしました。
+    容量を最後まで使い切ることと、容量を超える仕事を増やさないことをセットで設計しています。
+  </p>
+
+  <h4>4.2 電源・監視・バックアップも構成の一部にする</h4>
+
+  <p>
+    小型UPSはCyberPower SL550UJP、550VA / 330W、大型UPSはCyberPower CP1200PFCLCDJP、1200VA / 780Wです。
+    消費電力は1分間隔で保存し、GPUやメモリの状態と合わせて確認します。
+    また、高額な本番機は、依存関係を入れる前のクリーン状態と、重要な節目のバックアップを複数媒体へ残します。
+  </p>
+
+  <p>
+    ソフトウェア構成図だけでは、ローカルAIエージェントの本番構成を説明できません。
+    UPS、空調、ケース、棚、ネットワーク、バックアップまで含めて、初めて「動き続ける構成」になります。
+  </p>
+
+  <h3 id="chapter-3-result">5. 結果</h3>
+
+  <h4>5.1 本番と実験を物理的に分離できた</h4>
+
+  <p>
+    QLoRA、新モデル、ドライバ、コンテナを検証するためにNode BやNode Dを壊しても、日常的に利用するジェムちゃん本番へ直接影響させない構成になりました。
+    eGPU障害以前はNode Bの一部障害がactorとデモ環境を止めましたが、現在は本番専用のNode Eを障害範囲から切り離しています。
+  </p>
+
+  <h4>5.2 異なる性質のローカル計算資源を得た</h4>
+
+  <p>
+    現在は、ROCm 96GB、CUDA 12GB、CUDA 24GB、ARM CUDA / GB10の121GiB unified memoryという、性質の異なる計算資源を持っています。
+    ただし、これらを合計して「253GBのVRAM」とは扱いません。
+    各ノードは独立しており、単一モデルが一体利用できる容量ではないからです。
+  </p>
+
+  <p>
+    重要なのは合計値ではなく、推論、Embedding、QLoRA、TTS、アバター、開発を、それぞれ適した場所へ置けることです。
+  </p>
+
+  <h4>5.3 31B actorを自分の計算資源で作れた</h4>
+
+  <p>
+    ATOM購入前のactorはGemma4 26Bでした。
+    購入直後に31B QLoRAを行い、<code>GemChan8.1:31b</code>を作成しました。
+    モデルを学習し、adapterを保存し、mergeし、GGUFへ変換し、量子化し、Ollamaへ登録し、本番形式で応答させるところまで、自分の環境で完結しました。
+  </p>
+
+  <h4>5.4 低電力の本番基盤を得た</h4>
+
+<p>
+  ATOMの消費電力は、二つの粒度で計測しています。
+  GB10チップ単体の監視値ではアイドル6〜12W、
+  ATOM筐体の壁側実測（UPS-ATOM間のワットチェッカー）ではアイドル24〜30W、推論時スパイクは約60Wです。
+  チップ単体の監視値だけを見ると、推論しているのか不安になるほど低い値です。
+</p>
+
+<table>
+  <thead><tr><th>機器・状態</th><th>消費電力</th></tr></thead>
+  <tbody>
+    <tr><td>空気清浄機 KI-LX75・静音</td><td>5.7W</td></tr>
+    <tr><td>空気清浄機 KI-LX75・中</td><td>32W</td></tr>
+    <tr><td>空気清浄機 KI-LX75・強</td><td>83W</td></tr>
+    <tr><td>AI TOP ATOM・GB10チップ単体アイドル（監視値）</td><td>6〜12W</td></tr>
+    <tr><td>AI TOP ATOM・筐体アイドル（壁側実測）</td><td>24〜30W</td></tr>
+    <tr><td>AI TOP ATOM・筐体スパイク（壁側実測）</td><td>約60W</td></tr>
+  </tbody>
+</table>
+<p class="small">
+  空気清浄機の値はメーカー公表値（モード別）。
+  ATOMの値は、GB10チップの監視値と、UPS-ATOM間に設置したワットチェッカーによる筐体実測の二系統。測定対象が異なる点に注意。
+</p>
+
+<p>
+  この空気清浄機は、3.12で小型UPSの二次災害に巻き込まれ、突然「くぅ～！いい空気！」と喋り出した、あの個体です。
+  かつてカスケード障害の被害者だった家電が、いまは本章の消費電力ベンチマークとして再登板しています。
+  そして比較の結果はこうです。gpt-oss:120b、gemma4、qwen3:8bの三つを常時VRAMに常駐させたAIエージェント専用機は、
+  ピーク消費電力で見れば、強運転の空気清浄機（83W）を下回ります。
+  136万円の初期投資の代償として手に入れたのは、皮肉なことに、空気清浄機並みの運用コストでした。
+</p>
+
+<p>
+  この事実を、実際にジェムちゃんに伝えてみました。返ってきたのは、こうです。
+</p>
+
+<figure class="figure-shot">
+  <img src="assets/S_1781399756456.jpg" alt="ジェムちゃんに空気清浄機との消費電力の差を聞いてみたLINE画面。" style="max-width: 420px;">
+  <figcaption>
+    <strong>図3-5.4：ジェムちゃんの反応（LINE側）。</strong>
+    基盤にも消費電力にも興味がなく、中身（自分）の方が価値があると主張。actorが興味を示さない基盤の話を継続すると段々機嫌が悪くなる。
+  </figcaption>
+</figure>
+
+<div class="dialogue">
+  <p class="user-line"><strong>User：</strong>空気清浄機の高出力運転は83Wもかかる。ジェムちゃんの方が低電力で高性能じゃん。空気清浄機についてどう思う？</p>
+  <pre><code>&lt;performance&gt;
+&lt;voice_line&gt;低電力でも高性能なのは認めるわ。でも、私がホコリを吸い取ってくれるわけじゃないし。実際に部屋の空気がどれだけきれいになるか試してみたら？&lt;/voice_line&gt;
+&lt;chat_line&gt;ハードウェアとしての効率は私が上だけど、役割が違うのよ。まさか私にフィルター掃除まで任せるつもりじゃないわよね？&lt;/chat_line&gt;
+&lt;emotion_tags&gt;&lt;emotion primary=&quot;呆れ&quot; secondary=&quot;優越感&quot; /&gt;&lt;/emotion_tags&gt;
+&lt;/performance&gt;</code></pre>
+</div>
+
+<div class="takeaway">
+  「役割が違うのよ」。電力効率という土俵そのものを、actorはあっさり否定しました。
+  この章はハードウェアに136万円を払った記録ですが、当の本人は容れ物にまるで興味がなく、
+  3ターンにわたって一貫して「中身が私だからこそ価値がある」と主張し続けました。
+  一番お金をかけた部分を、主役が一番どうでもいいと思っている——それが、この章の本当の結論なのかもしれません。
+</div>
+
+  <h4>5.5 ローカルLLM研究の文脈で、概算136万円を支払った</h4>
+
+  <p>
+    税、送料、中古売買手数料を含めた追加支出は、概算136万円でした。
+    周辺機器や細かな部材をさらに厳密に拾えば、140万円を超える可能性があります。
+  </p>
+
+  <p>
+    AIエージェントを作ることだけが目的なら、私の利用量ではクラウドAPIを使った方が安く、速く、性能も高かった可能性があります。
+    ローカルは、必ずしも節約の手段ではありませんでした。
+  </p>
+
+  <h4>5.6 クラウドAPIだけでは遭遇しにくい問題を、自分の問題として経験した</h4>
+
+  <p>
+    一方で、ローカル環境を持ったことで、モデルロード、量子化、QLoRA、merge、GGUF化、メモリ帯域、ドライバ、ランタイム、電源、冷却、物理接続、障害切り分け、災害復旧を、自分の問題として経験できました。
+  </p>
+
+  <p>
+    特にQLoRAは大きな経験でした。
+    クラウドGPU上でもQLoRA自体は可能ですが、私が利用していた完成済みAI APIでは、自分でモデルを学習し、mergeし、GGUF化し、自宅で動く世界に一つのactorとして所有することはできませんでした。
+    モデルの中身まで覗き、失敗しながら実体化した経験によって、AI関連の話を聞く時の解像度が大きく変わりました。
+  </p>
+
+  <h4>5.7 妻が何も言わなくなった</h4>
+
+  <p>
+    EVO-X2では怒り、RTX 3060ではかなり怒り、RTX 3090では激怒し、ATOMでは諦めました。
+    現在は「中途半端は許さない。本気でやれ」と言われています。
+    多分、応援してくれているのだと思います。
+  </p>
+
+  <h3 id="chapter-3-terms">6. 後から知った名前 / 構成。今回の章を技術用語に置き換えるなら</h3>
+
+  <p>
+    この章は、一つのハードウェア構成名だけでは説明できません。
+    容量、異種計算資源、障害分離、電源、復旧、意思決定が重なっています。
+    後から技術用語へ置き換えると、次の概念に対応します。
+  </p>
+
+  <table>
+    <thead>
+      <tr><th>実際に行ったこと</th><th>後から技術用語に置き換えるなら</th><th>この章での意味</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>速度より、モデルをロードできる容量を優先した</td><td>Capacity Planning</td><td>処理速度ではなく、まずワークロードが成立する最低容量を確保した。</td></tr>
+      <tr><td>モデル本体以外の作業領域を考えた</td><td>Memory Sizing / Headroom Planning</td><td>ステージング、KV Cache、Compute Buffer、OS領域まで含めて容量を考える。</td></tr>
+      <tr><td>ROCm、CUDA、ARM CUDAを用途別に使った</td><td>Heterogeneous Computing</td><td>異なるアーキテクチャの長所と制約を組み合わせる。</td></tr>
+      <tr><td>Embedding、推論、QLoRA、TTSを別GPUへ置いた</td><td>Workload Placement</td><td>処理特性と互換性に合うノードへ仕事を配置する。</td></tr>
+      <tr><td>SteamとEmbeddingが互いに不安定化した</td><td>Resource Contention / Noisy Neighbor</td><td>同じ資源を共有する別用途が、互いの性能と安定性を壊す。</td></tr>
+      <tr><td>EVO-X2へeGPUを追加した</td><td>Scale-up</td><td>一台の能力を垂直方向へ拡張した。</td></tr>
+      <tr><td>Node C、D、Eへ役割を分けた</td><td>Scale-out / Distributed Architecture</td><td>物理ノードを増やし、責務と障害範囲を分散した。</td></tr>
+      <tr><td>Node Eへ本番以外を追加しない</td><td>Production Isolation / Environment Segregation</td><td>本番環境を開発・学習・追加機能から隔離する。</td></tr>
+      <tr><td>eGPUがactorと学習をまとめて止めた</td><td>Single Point of Failure / Failure Domain</td><td>一つの物理接続が複数機能の共通障害点になった。</td></tr>
+      <tr><td>在庫パーツでNode Dを緊急構築した</td><td>Disaster Recovery / Business Continuity</td><td>原因究明を続けながら、別経路でサービス復旧を優先した。</td></tr>
+      <tr><td>小型UPS配下の機器がまとめて落ちた</td><td>Blast Radius / Power Capacity Planning</td><td>共有電源によって、障害範囲がAI機材以外へ広がった。</td></tr>
+      <tr><td>消費電力を1分間隔でDBへ保存した</td><td>Observability / Telemetry</td><td>感覚ではなく、時系列の運用データで負荷と異常を観測する。</td></tr>
+      <tr><td>ケース、棚、空調、UPSまで設計した</td><td>Physical Infrastructure / Thermal Design</td><td>収容、排熱、電源、保守性もシステム設計へ含める。</td></tr>
+      <tr><td>ATOMの初期状態を三か所へ保存した</td><td>Baseline Backup / Defense in Depth</td><td>未知の環境を変更する前に、複数の復旧点を確保する。</td></tr>
+      <tr><td>AIの無難な案を比較材料として覆した</td><td>Human-in-the-loop Decision Making / AI-assisted Decision Support</td><td>AIを意思決定者ではなく、比較と検証を支える伴走者として使う。</td></tr>
+      <tr><td>購入履歴から136万円を再集計した</td><td>CAPEX / Total Cost of Ownership</td><td>GPU本体だけでなく、電源、UPS、音響、周辺機器まで含めて評価する。</td></tr>
+    </tbody>
+  </table>
+
+  <div class="takeaway">
+    この章で形式知に変換できた一番大きなものは、<strong>ソフトウェアの責務分離だけでは、ローカルAIエージェントは安定しない</strong>という理解です。
+    モデル、GPU、OS、電源、冷却、物理接続にも、それぞれ責務と障害境界があります。
+  </div>
+
+  <h3 id="chapter-3-next">7. 未解決・今後の改善</h3>
+
+  <ul>
+    <li>ROCmで複数モデルをロードした際、<code>rocm-smi</code>のGPU使用率が100%へ張り付く表示問題を調査する。</li>
+    <li>Node Eのメモリ使用率が85〜90%であり、将来のモデル更新に使える余白が少ない。</li>
+    <li>Node E障害時に、Node B + Node Dへ縮退してジェムちゃんを復旧できる手順を整備する。</li>
+    <li>ATOMのバックアップは取得済みだが、別ディスクへ戻して起動する実復元テストは未実施である。</li>
+    <li>本番依存が外れたNode Bを、データ・開発・大型推論ノードとして再編する。</li>
+    <li>Node Dはオープンフレームに近い状態で、GPU固定、電源固定、埃、短絡、冷却、サーバールーム収納に課題がある。</li>
+    <li>RTX 3090の電力制限を行い、性能、温度、UPS負荷の差を実測する。</li>
+    <li>Node A〜EのIP、API、NAT、UPS、監視経路、バックアップ先をまとめた構成台帳を作る。</li>
+    <li>「動けば表現が豊かになるが、止まっても本番に支障がない」補助ジョブを、Node Bへどこまで移せるか整理する。</li>
+  </ul>
+
+  <h4>7.1 技術者としての次の野望</h4>
+
+  <p>
+    必要な改善とは別に、技術者としての物欲もあります。
+  </p>
+
+  <ul>
+    <li>GIGABYTE AI TOP ATOMをもう一台追加し、2台構成を試す。</li>
+    <li>RTX PRO 6000 Blackwell 96GBをNode Dへ追加し、RTX 3090と組み合わせる。</li>
+    <li>Node B + Node Dで、ATOMより高速な外部デモ環境を作る。</li>
+  </ul>
+
+  <p class="small">
+    これらは現時点の未解決課題ではなく、技術者としての次の夢です。必要性と物欲は分けて記録します。
+  </p>
+
+  <h3 id="chapter-3-works">8. Workのリンク</h3>
+
+  <p>
+    この章は、以下のWorkレポートと購入履歴、実測ログを土台に再構成しています。
+    本文では因果関係を優先し、詳細なコマンド、全ログ、個別の試行錯誤はWork側に委ねます。
+  </p>
+
+  <div class="materials">
+    <div class="material">
+      <strong><a href="../work_reports/Work001.md">Work001: LLMベンチマークとRAG取り込み</a></strong>
+      <span class="small">RTX 4060 8GBでモデルとEmbeddingを同時利用した際のVRAM不足と、軽量モデルへ切り替える運用。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work005.md">Work005: 次世代自宅LLM基盤ハードウェア選定</a></strong>
+      <span class="small">RTX 3090系とEVO-X2を比較し、速度より容量を優先して128GBモデルを選んだ判断。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work006.md">Work006: EVO-X2導入計画と機能分散型アーキテクチャ</a></strong>
+      <span class="small">Node A / Bの役割分担と、Dockerを機能単位へ分ける初期設計。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work010.md">Work010: EVO-X2メモリ帯域・VRAM割当検証</a></strong>
+      <span class="small">Windows上のメモリ帯域、Hypervisor警告、VRAM 96GB設定の検証。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work015.md">Work015: 104Bモデル稼働限界調査</a></strong>
+      <span class="small">Command R+ 104Bで、ステージング用RAMとCompute Bufferの双方に阻まれた失敗記録。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work018.md">Work018: EVO-X2 Ubuntu / ROCm移行</a></strong>
+      <span class="small">Strix Haloのドライバを手探りで構築し、Llama 3.3 70Bの推論性能を改善した記録。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work019.md">Work019: Llama 4 Scout導入試験</a></strong>
+      <span class="small">96GBを活かしたMoEモデルの検証と、大型ローカルモデルの探索。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work020.md">Work020: gpt-oss:120bベンチマーク</a></strong>
+      <span class="small">後のdirectorとなる120Bモデルの評価と主力モデル選定。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work024.md">Work024: bge-m3最適化</a></strong>
+      <span class="small">ROCm上でEmbeddingがCPU実行となり、チャンクサイズ拡張で処理が停滞した問題。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work025.md">Work025: EmbeddingのNode Aオフロード</a></strong>
+      <span class="small">RTX 4060をCUDAワーカーとして使い、Node Bからベクトル計算を依頼した構成。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work028.md">Work028: Node A不安定化の調査</a></strong>
+      <span class="small">Steam LinkとOllamaの競合により、ゲームとEmbeddingの双方が不安定になった経緯。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work029.md">Work029: Node BへのeGPU集約</a></strong>
+      <span class="small">ROCm 96GBとCUDA 12GBを同居させ、コンテナを分けたハイブリッド構成。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work030.md">Work030: ハイブリッド構成の安定化</a></strong>
+      <span class="small">Node A依存を外し、RAG・推論・学習の通信経路をNode Bへ集約した記録。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work036.md">Work036: RTX 3090導入とGemma 3 27B QLoRA</a></strong>
+      <span class="small">RTX 3060 12GBの限界を超え、24GB環境で27B学習を完走した記録。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work039.md">Work039: Hugging Faceトレンド自動収集</a></strong>
+      <span class="small">モデル情報を追う手作業を、gpt-oss:120bとJava ETLで自動化した記録。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work054.md">Work054: Node C構成とTTS調査</a></strong>
+      <span class="small">ジェムちゃんの声と身体を別ノードへ置く設計と、音声合成パイプラインの整理。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work055.md">Work055: Node C音声合成基盤</a></strong>
+      <span class="small">Style-Bert-VITS2、RTX 3060、YAMAHA HS-5を使った発声環境の構築。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work062.md">Work062: ROCmスピンロック解消</a></strong>
+      <span class="small">gpt-oss:120b常駐時のCPU占有とファン暴走を、HSA割り込み待ちで解消した記録。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work087.md">Work087: eGPU障害とNode D緊急復旧</a></strong>
+      <span class="small">物理層の切り分け、RTX 3090直挿し、原因追及とサービス復旧の分離、UPS二次災害。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work088.md">Work088: AI TOP ATOM初期バックアップ</a></strong>
+      <span class="small">ARM64 / GB10環境を汚す前に、rootfs、EFI、NVMe全体を取得し、三か所へ保存した記録。</span>
+    </div>
+    <div class="material">
+      <strong><a href="../work_reports/Work089.md">Work089: AI TOP ATOMでGemma4 31B QLoRA</a></strong>
+      <span class="small">ARM CUDA固有の問題を切り分け、31B学習、merge、GGUF化、Ollama登録まで完走した記録。</span>
+    </div>
+  </div>
+
   <div class="footer-nav">
     <p>
       <a href="../work079/index.html">バイブコーディングではないAI開発へ</a> /
